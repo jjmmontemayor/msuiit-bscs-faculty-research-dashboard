@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Research Projects Dashboard</title>
+
+  <!-- DataTables CSS -->
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- jQuery -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+  <!-- DataTables JS -->
+  <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background-color: #f4f4f9;
+    }
+    h1 {
+      text-align: center;
+    }
+    #chartContainer {
+      width: 80%;
+      margin: 30px auto;
+    }
+    table.dataTable thead th {
+      background-color: #4CAF50;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <h1>Research Projects Dashboard</h1>
+
+  <div id="chartContainer">
+    <canvas id="projectsChart"></canvas>
+  </div>
+
+  <table id="projectsTable" class="display" style="width:100%">
+    <thead>
+      <tr></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    const sheetID = '17BA5GDMAEFnGy7UA21VreV68m8iaRaYA9BSkCnCHoAA'; // Replace with your Google Sheet ID
+    const url = `https://spreadsheets.google.com/feeds/list/${sheetID}/od6/public/values?alt=json`;
+
+    fetch(url)
+      .then(res => res.json())
+      .then(data => {
+        const entries = data.feed.entry;
+        if (!entries || entries.length === 0) return;
+
+        const headers = Object.keys(entries[0])
+          .filter(k => k.startsWith('gsx$'))
+          .map(k => k.replace('gsx$', ''));
+
+        // Build table headers
+        const thead = $('#projectsTable thead tr');
+        headers.forEach(h => thead.append(`<th>${h.replace(/_/g, ' ').toUpperCase()}</th>`));
+
+        // Build table rows
+        const tbody = $('#projectsTable tbody');
+        entries.forEach(entry => {
+          let row = '<tr>';
+          headers.forEach(h => row += `<td>${entry[`gsx$${h}`]?.$t || ''}</td>`);
+          row += '</tr>';
+          tbody.append(row);
+        });
+
+        // Initialize DataTable
+        $('#projectsTable').DataTable({
+          pageLength: 10,
+          order: [[0, 'desc']]
+        });
+
+        // Prepare data for chart
+        const yearCounts = {};
+        entries.forEach(entry => {
+          const year = entry.gsx$year.$t;
+          yearCounts[year] = (yearCounts[year] || 0) + 1;
+        });
+
+        const chartLabels = Object.keys(yearCounts).sort();
+        const chartData = chartLabels.map(y => yearCounts[y]);
+
+        // Draw bar chart
+        new Chart(document.getElementById('projectsChart'), {
+          type: 'bar',
+          data: {
+            labels: chartLabels,
+            datasets: [{
+              label: 'Number of Projects per Year',
+              data: chartData,
+              backgroundColor: 'rgba(75, 192, 192, 0.6)',
+              borderColor: 'rgba(75, 192, 192, 1)',
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: { display: false },
+              title: { display: true, text: 'Projects by Year' }
+            },
+            scales: {
+              y: { beginAtZero: true, precision: 0 }
+            }
+          }
+        });
+      })
+      .catch(err => console.error('Error fetching Google Sheet:', err));
+  </script>
+</body>
+</html>
