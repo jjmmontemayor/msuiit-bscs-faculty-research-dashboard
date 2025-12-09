@@ -1,4 +1,3 @@
-// Common JS for loading CSVs and initializing DataTables
 function loadCSV(csvUrl, tableId, callback) {
   Papa.parse(csvUrl, {
     download: true,
@@ -20,7 +19,6 @@ function loadCSV(csvUrl, tableId, callback) {
         let tr = '<tr>';
         headers.forEach(h => {
           let cell = row[h] || '';
-          // Make links clickable if header contains 'Title & Link'
           if(h.toLowerCase().includes('link') || h.toLowerCase().includes('title')) {
             if(cell.startsWith('http')) {
               cell = `<a href="${cell}" target="_blank">${cell}</a>`;
@@ -38,7 +36,7 @@ function loadCSV(csvUrl, tableId, callback) {
         order: [[0,'desc']]
       });
 
-      // Call optional callback (for charts)
+      // Optional chart callback
       if(callback) callback(data, headers);
     },
     error: function(err){
