@@ -51,74 +51,48 @@
   </table>
 
   <script>
-    const sheetID = '17BA5GDMAEFnGy7UA21VreV68m8iaRaYA9BSkCnCHoAA'; // Replace with your Google Sheet ID
-    const url = `https://spreadsheets.google.com/feeds/list/${sheetID}/od6/public/values?alt=json`;
+   const csvUrl = 'https://docs.google.com/spreadsheets/d/2PACX-1vR-jDPbQ-ZCkBK8_1igyWkHd3ynUPHh5l8eI6KmD-qhpu9ZeYTqYV11X7NQ82NbYyEwvSiTzGVD6-3L/pub?output=csv';
 
-    fetch(url)
-      .then(res => res.json())
-      .then(data => {
-        const entries = data.feed.entry;
-        if (!entries || entries.length === 0) return;
+fetch(csvUrl)
+  .then(response => response.text())
+  .then(csvText => {
+    // Parse CSV
+    const rows = csvText.split('\n').map(r => r.split(','));
+    const headers = rows[0];
+    const tbody = $('#projectsTable tbody');
+    const thead = $('#projectsTable thead tr');
 
-        const headers = Object.keys(entries[0])
-          .filter(k => k.startsWith('gsx$'))
-          .map(k => k.replace('gsx$', ''));
+    // Build table headers
+    headers.forEach(h => thead.append(`<th>${h}</th>`));
 
-        // Build table headers
-        const thead = $('#projectsTable thead tr');
-        headers.forEach(h => thead.append(`<th>${h.replace(/_/g, ' ').toUpperCase()}</th>`));
+    // Build table rows
+    rows.slice(1).forEach(row => {
+      const tr = '<tr>' + row.map(cell => `<td>${cell}</td>`).join('') + '</tr>';
+      tbody.append(tr);
+    });
 
-        // Build table rows
-        const tbody = $('#projectsTable tbody');
-        entries.forEach(entry => {
-          let row = '<tr>';
-          headers.forEach(h => row += `<td>${entry[`gsx$${h}`]?.$t || ''}</td>`);
-          row += '</tr>';
-          tbody.append(row);
-        });
+    // Initialize DataTable
+    $('#projectsTable').DataTable();
 
-        // Initialize DataTable
-        $('#projectsTable').DataTable({
-          pageLength: 10,
-          order: [[0, 'desc']]
-        });
+    // Build chart (projects per year)
+    const yearIndex = headers.indexOf('Year');
+    const yearCounts = {};
+    rows.slice(1).forEach(row => {
+      const year = row[yearIndex];
+      yearCounts[year] = (yearCounts[year] || 0) + 1;
+    });
 
-        // Prepare data for chart
-        const yearCounts = {};
-        entries.forEach(entry => {
-          const year = entry.gsx$year.$t;
-          yearCounts[year] = (yearCounts[year] || 0) + 1;
-        });
+    const chartLabels = Object.keys(yearCounts).sort();
+    const chartData = chartLabels.map(y => yearCounts[y]);
 
-        const chartLabels = Object.keys(yearCounts).sort();
-        const chartData = chartLabels.map(y => yearCounts[y]);
+    new Chart(document.getElementById('projectsChart'), {
+      type: 'bar',
+      data: { labels: chartLabels, datasets: [{ label: 'Projects per Year', data: chartData, backgroundColor: 'rgba(75, 192, 192, 0.6)' }] },
+      options: { responsive: true }
+    });
+  })
+  .catch(err => console.error(err));
 
-        // Draw bar chart
-        new Chart(document.getElementById('projectsChart'), {
-          type: 'bar',
-          data: {
-            labels: chartLabels,
-            datasets: [{
-              label: 'Number of Projects per Year',
-              data: chartData,
-              backgroundColor: 'rgba(75, 192, 192, 0.6)',
-              borderColor: 'rgba(75, 192, 192, 1)',
-              borderWidth: 1
-            }]
-          },
-          options: {
-            responsive: true,
-            plugins: {
-              legend: { display: false },
-              title: { display: true, text: 'Projects by Year' }
-            },
-            scales: {
-              y: { beginAtZero: true, precision: 0 }
-            }
-          }
-        });
-      })
-      .catch(err => console.error('Error fetching Google Sheet:', err));
   </script>
 </body>
 </html>
