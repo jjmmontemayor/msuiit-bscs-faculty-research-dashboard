@@ -1,126 +1,83 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Research Projects Dashboard</title>
-
-  <!-- DataTables CSS -->
-  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
-
-  <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-  <!-- jQuery -->
-  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-
-  <!-- DataTables JS -->
-  <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-
-  <!-- PapaParse JS for CSV parsing -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 20px;
-      background-color: #f4f4f9;
-    }
-    h1 {
-      text-align: center;
-    }
-    #chartContainer {
-      width: 80%;
-      margin: 30px auto;
-    }
-    table.dataTable thead th {
-      background-color: #4CAF50;
-      color: white;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Research Dashboard</title>
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+body{font-family:Arial;margin:20px;background:#f4f4f9;}
+h1{text-align:center;}
+nav a{margin-right:10px;text-decoration:none;color:#333;}
+#stats{display:flex;justify-content:space-around;margin:20px 0;}
+.stat-box{background:#fff;padding:20px;border-radius:8px;box-shadow:0 2px 5px rgba(0,0,0,0.1);width:22%;text-align:center;}
+table.dataTable thead th{background:#4CAF50;color:white;}
+</style>
 </head>
 <body>
-  <h1>Research Projects Dashboard</h1>
+<h1>Research Dashboard</h1>
+<nav>
+  <a href="index.html">Dashboard</a> |
+  <a href="internal.html">Internal Projects</a> |
+  <a href="external.html">External Projects</a> |
+  <a href="publications.html">Publications</a> |
+  <a href="conferences.html">Conferences</a>
+</nav>
 
-  <div id="chartContainer">
-    <canvas id="projectsChart"></canvas>
-  </div>
+<div id="stats">
+  <div class="stat-box"><h2 id="internalCount">0</h2><p>Internal Projects</p></div>
+  <div class="stat-box"><h2 id="externalCount">0</h2><p>External Projects</p></div>
+  <div class="stat-box"><h2 id="publicationsCount">0</h2><p>Publications</p></div>
+  <div class="stat-box"><h2 id="conferencesCount">0</h2><p>Conferences</p></div>
+</div>
 
-  <table id="projectsTable" class="display" style="width:100%">
-    <thead>
-      <tr></tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+<h2>Faculty List</h2>
+<table id="facultyTable" class="display">
+  <thead><tr></tr></thead>
+  <tbody></tbody>
+</table>
 
-  <script>
-    const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR-jDPbQ-ZCkBK8_1igyWkHd3ynUPHh5l8eI6KmD-qhpu9ZeYTqYV11X7NQ82NbYyEwvSiTzGVD6-3L/pub?gid=0&single=true&output=csv';
+<script>
+$(document).ready(function(){
+  // Replace with your Google Sheet CSV URLs
+  const CSVS = {
+    internal: 'INTERNAL_PROJECTS_CSV_URL',
+    external: 'EXTERNAL_PROJECTS_CSV_URL',
+    publications: 'PUBLICATIONS_CSV_URL',
+    conferences: 'CONFERENCES_CSV_URL',
+    faculty: 'FACULTY_CSV_URL'
+  };
 
-    Papa.parse(csvUrl, {
-      download: true,
-      header: true,
-      skipEmptyLines: true,
-      complete: function(results) {
-        const data = results.data;
-        const headers = results.meta.fields;
+  function countRows(csvUrl, elementId){
+    Papa.parse(csvUrl,{download:true,header:true,skipEmptyLines:true,complete:function(results){
+      $('#' + elementId).text(results.data.length);
+    }});
+  }
 
-        // Build table headers
-        const thead = $('#projectsTable thead tr');
-        headers.forEach(h => thead.append(`<th>${h}</th>`));
+  countRows(CSVS.internal,'internalCount');
+  countRows(CSVS.external,'externalCount');
+  countRows(CSVS.publications,'publicationsCount');
+  countRows(CSVS.conferences,'conferencesCount');
 
-        // Build table rows
-        const tbody = $('#projectsTable tbody');
-        data.forEach(row => {
-          let tr = '<tr>';
-          headers.forEach(h => tr += `<td>${row[h] || ''}</td>`);
-          tr += '</tr>';
-          tbody.append(tr);
-        });
-
-        // Initialize DataTable
-        $('#projectsTable').DataTable({
-          pageLength: 10,
-          order: [[0, 'desc']]
-        });
-
-        // Build chart (projects per year)
-        const yearCounts = {};
-        data.forEach(row => {
-          const year = row['Year'];
-          if(year) yearCounts[year] = (yearCounts[year] || 0) + 1;
-        });
-
-        const chartLabels = Object.keys(yearCounts).sort((a,b) => a-b);
-        const chartData = chartLabels.map(y => yearCounts[y]);
-
-        new Chart(document.getElementById('projectsChart'), {
-          type: 'bar',
-          data: {
-            labels: chartLabels,
-            datasets: [{
-              label: 'Projects per Year',
-              data: chartData,
-              backgroundColor: 'rgba(75, 192, 192, 0.6)',
-              borderColor: 'rgba(75, 192, 192, 1)',
-              borderWidth: 1
-            }]
-          },
-          options: {
-            responsive: true,
-            plugins: {
-              legend: { display: false },
-              title: { display: true, text: 'Projects by Year' }
-            },
-            scales: {
-              y: { beginAtZero: true, precision: 0 }
-            }
-          }
-        });
-      },
-      error: function(err) {
-        console.error('Error parsing CSV:', err);
-      }
+  // Load faculty table
+  Papa.parse(CSVS.faculty,{download:true,header:true,skipEmptyLines:true,complete:function(results){
+    const data = results.data;
+    const headers = results.meta.fields;
+    const thead = $('#facultyTable thead tr');
+    headers.forEach(h=>thead.append(`<th>${h}</th>`));
+    const tbody = $('#facultyTable tbody');
+    data.forEach(row=>{
+      let tr='<tr>';
+      headers.forEach(h=>tr+=`<td>${row[h]||''}</td>`);
+      tr+='</tr>';
+      tbody.append(tr);
     });
-  </script>
+    $('#facultyTable').DataTable();
+  }});
+});
+</script>
 </body>
 </html>
