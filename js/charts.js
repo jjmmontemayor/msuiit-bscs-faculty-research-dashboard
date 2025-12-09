@@ -1,4 +1,3 @@
-// Generate bar chart of counts per year
 function generateBarChart(data, yearField, canvasId, labelText) {
   const yearCounts = {};
   data.forEach(row => {
