@@ -1,0 +1,22 @@
+/* Common body styling */
+body {
+  font-family: Arial, sans-serif;
+  margin: 20px;
+  background-color: #f4f4f9;
+}
+
+h1 {
+  text-align: center;
+}
+
+/* DataTable header styling */
+table.dataTable thead th {
+  background-color: #4CAF50;
+  color: white;
+}
+
+/* Chart container */
+#chartContainer {
+  width: 80%;
+  margin: 30px auto;
+}
