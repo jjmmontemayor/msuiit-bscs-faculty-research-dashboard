@@ -48,7 +48,7 @@
 <h1>CS Research Dashboard</h1>
 
 <section id="stats">
-  <h2>Research Statistics</h2>
+  <h2>Yearly Research Statistics</h2>
   <div class="stats-grid">
     <div class="stat-card">
       <span id="internalCount">0</span><br>Internally Funded
@@ -85,7 +85,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
-// CSV URLs
+// CSV Sources
 const facultyCSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR-jDPbQ-ZCkBK8_1igyWkHd3ynUPHh5l8eI6KmD-qhpu9ZeYTqYV11X7NQ82NbYyEwvSiTzGVD6-3L/pub?gid=5470856&single=true&output=csv";
 const yearlyCSV  = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR-jDPbQ-ZCkBK8_1igyWkHd3ynUPHh5l8eI6KmD-qhpu9ZeYTqYV11X7NQ82NbYyEwvSiTzGVD6-3L/pub?gid=743932525&single=true&output=csv";
 
@@ -117,22 +117,28 @@ function loadYearlyStats() {
     complete: function(results) {
       const rows = results.data.filter(r => Object.values(r).some(v => v));
 
-      // Use the first row as the total (sum) row
-      const totalRow = rows[0];
+      // Map category to total value (second column)
+      const categoryMap = {};
+      rows.forEach(row => {
+        const key = row[Object.keys(row)[0]];   // first column is category name
+        const value = parseInt(row[Object.keys(row)[1]] || 0); // second column is total
+        categoryMap[key] = value;
+      });
 
-      // Update stat cards from total row
-      document.getElementById("internalCount").textContent = parseInt(totalRow['Internally Funded Count'] || 0);
-      document.getElementById("externalCount").textContent = parseInt(totalRow['Externally Funded Count'] || 0);
-      document.getElementById("pubCount").textContent      = parseInt(totalRow['Publications Count'] || 0);
-      document.getElementById("confCount").textContent     = parseInt(totalRow['Conferences Count'] || 0);
+      // Update stat cards
+      document.getElementById("internalCount").textContent = categoryMap['Internally Funded'] || 0;
+      document.getElementById("externalCount").textContent = categoryMap['Externally Funded'] || 0;
+      document.getElementById("pubCount").textContent      = categoryMap['Publications'] || 0;
+      document.getElementById("confCount").textContent     = categoryMap['Conferences'] || 0;
 
       // Combined bar chart per year
-      const years = [...new Set(rows.map(r => r.Year))].sort();
+      const yearRows = rows.filter(r => r['Year']); // only rows with Year
+      const years = [...new Set(yearRows.map(r => r['Year']))].sort();
       const categories = ['Internally Funded','Externally Funded','Publications','Conferences'];
 
       const datasets = years.map((year, idx) => {
-        const row = rows.find(r => r.Year === year);
-        const dataPerYear = categories.map(cat => parseInt(row[cat + " Count"] || 0));
+        const row = yearRows.find(r => r['Year'] === year);
+        const dataPerYear = categories.map(cat => parseInt(row[cat] || 0));
         return {
           label: year,
           data: dataPerYear,
@@ -157,5 +163,6 @@ function loadYearlyStats() {
 loadFacultyTable();
 loadYearlyStats();
 </script>
+
 </body>
 </html>
