@@ -1,38 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Internally Funded Projects</title>
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+<link rel="stylesheet" href="style.css">
+<script src="libs.js"></script>
+<script src="scripts.js"></script>
+<script src="charts.js"></script>
+</head>
+<body>
+<h1>Internally Funded Projects</h1>
+<div id="chartContainer">
+  <canvas id="internalChart"></canvas>
+</div>
+<table id="internalTable" class="display">
+  <thead><tr></tr></thead>
+  <tbody></tbody>
+</table>
+
 <script>
-const csvUrl = CSVS.internal; // Pull from CSV object
-
-Papa.parse(csvUrl, {
-  download:true,
-  header:true,
-  skipEmptyLines:true,
-  complete:function(results){
-    const data = results.data;
-    const headers = results.meta.fields;
-
-    const thead = $('#internalTable thead tr');
-    headers.forEach(h => thead.append(`<th>${h}</th>`));
-
-    const tbody = $('#internalTable tbody');
-    data.forEach(row=>{
-      let tr='<tr>';
-      headers.forEach(h=>tr+=`<td>${row[h]||''}</td>`);
-      tr+='</tr>';
-      tbody.append(tr);
-    });
-
-    $('#internalTable').DataTable({pageLength:10, order:[[0,'desc']]});
-
-    // Chart per year
-    const yearCounts = {};
-    data.forEach(row => { if(row.Year) yearCounts[row.Year] = (yearCounts[row.Year]||0)+1; });
-    const labels = Object.keys(yearCounts).sort((a,b)=>a-b);
-    const chartData = labels.map(y=>yearCounts[y]);
-
-    new Chart(document.getElementById('chartInternal'), {
-      type:'bar',
-      data:{labels:labels, datasets:[{label:'Projects per Year', data:chartData, backgroundColor:'rgba(75,192,192,0.6)'}]},
-      options:{responsive:true, plugins:{legend:{display:false}, title:{display:true,text:'Internal Projects per Year'}}, scales:{y:{beginAtZero:true, precision:0}}}
-    });
-  }
+const csvUrl = 'INTERNAL_PROJECTS_CSV_LINK';
+loadCSV(csvUrl, 'internalTable', (data) => {
+  generateBarChart(data, 'Year', 'internalChart', 'Internally Funded Projects per Year');
 });
 </script>
+</body>
+</html>
