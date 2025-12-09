@@ -3,65 +3,31 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MSU-IIT CS Faculty Research and Creativity Dashboard</title>
+  <title>CS Research Dashboard</title>
 
   <!-- DataTables CSS -->
   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
 
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 20px;
-      background: #f7f7f7;
-    }
-    h1, h2, h3 {
-      text-align: center;
-    }
-    .stats-grid {
-      display: flex;
-      justify-content: space-around;
-      flex-wrap: wrap;
-      margin-bottom: 30px;
-    }
-    .stat-card {
-      background: #0054a6;
-      color: white;
-      padding: 20px;
-      margin: 10px;
-      border-radius: 8px;
-      flex: 1 1 180px;
-      text-align: center;
-    }
-    .chart-container {
-      width: 90%;
-      margin: 30px auto;
-    }
-    table.dataTable {
-      background: white;
-      width: 90%;
-      margin: 20px auto;
-    }
+    body { font-family: Arial, sans-serif; margin: 20px; background: #f7f7f7; }
+    h1, h2, h3 { text-align: center; }
+    .stats-grid { display: flex; justify-content: space-around; flex-wrap: wrap; margin-bottom: 30px; }
+    .stat-card { background: #0054a6; color: white; padding: 20px; margin: 10px; border-radius: 8px; flex: 1 1 180px; text-align: center; }
+    .chart-container { width: 90%; margin: 30px auto; }
+    table.dataTable { background: white; width: 90%; margin: 20px auto; }
   </style>
 </head>
 <body>
 
-<h1>MSU-IIT CS Faculty Research and Creativity Dashboard</h1>
+<h1>CS Research Dashboard</h1>
 
 <section id="stats">
-  <h2>Yearly Research Statistics</h2>
+  <h2>Research Statistics</h2>
   <div class="stats-grid">
-    <div class="stat-card">
-      <span id="internalCount">0</span><br>Internally Funded
-    </div>
-    <div class="stat-card">
-      <span id="externalCount">0</span><br>Externally Funded
-    </div>
-    <div class="stat-card">
-      <span id="pubCount">0</span><br>Publications
-    </div>
-    <div class="stat-card">
-      <span id="confCount">0</span><br>Conferences
-    </div>
+    <div class="stat-card"><span id="internalCount">0</span><br>Internally Funded</div>
+    <div class="stat-card"><span id="externalCount">0</span><br>Externally Funded</div>
+    <div class="stat-card"><span id="pubCount">0</span><br>Publications</div>
+    <div class="stat-card"><span id="confCount">0</span><br>Conferences</div>
   </div>
 
   <div class="chart-container">
@@ -85,7 +51,6 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
-// CSV Sources
 const facultyCSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR-jDPbQ-ZCkBK8_1igyWkHd3ynUPHh5l8eI6KmD-qhpu9ZeYTqYV11X7NQ82NbYyEwvSiTzGVD6-3L/pub?gid=5470856&single=true&output=csv";
 const yearlyCSV  = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR-jDPbQ-ZCkBK8_1igyWkHd3ynUPHh5l8eI6KmD-qhpu9ZeYTqYV11X7NQ82NbYyEwvSiTzGVD6-3L/pub?gid=743932525&single=true&output=csv";
 
@@ -109,7 +74,7 @@ function loadFacultyTable() {
   });
 }
 
-// Load Statistics + Combined Chart
+// Load Yearly Stats
 function loadYearlyStats() {
   Papa.parse(yearlyCSV, {
     download: true,
@@ -117,38 +82,29 @@ function loadYearlyStats() {
     complete: function(results) {
       const rows = results.data.filter(r => Object.values(r).some(v => v));
 
-      // Map category to total value (second column)
-      const categoryMap = {};
-      rows.forEach(row => {
-        const key = row[Object.keys(row)[0]];   // first column is category name
-        const value = parseInt(row[Object.keys(row)[1]] || 0); // second column is total
-        categoryMap[key] = value;
-      });
+      // Totals from 'Total' column
+      const totalRow = {};
+      rows.forEach(r => totalRow[r['Category']] = parseInt(r['Total']) || 0);
 
-      // Update stat cards
-      document.getElementById("internalCount").textContent = categoryMap['Internally Funded'] || 0;
-      document.getElementById("externalCount").textContent = categoryMap['Externally Funded'] || 0;
-      document.getElementById("pubCount").textContent      = categoryMap['Publications'] || 0;
-      document.getElementById("confCount").textContent     = categoryMap['Conferences'] || 0;
+      document.getElementById("internalCount").textContent = totalRow['Internally Funded'] || 0;
+      document.getElementById("externalCount").textContent = totalRow['Externally Funded'] || 0;
+      document.getElementById("pubCount").textContent      = totalRow['Publications'] || 0;
+      document.getElementById("confCount").textContent     = totalRow['Conferences'] || 0;
 
-      // Combined bar chart per year
-      const yearRows = rows.filter(r => r['Year']); // only rows with Year
-      const years = [...new Set(yearRows.map(r => r['Year']))].sort();
+      // Chart per year
       const categories = ['Internally Funded','Externally Funded','Publications','Conferences'];
-
-      const datasets = years.map((year, idx) => {
-        const row = yearRows.find(r => r['Year'] === year);
-        const dataPerYear = categories.map(cat => parseInt(row[cat] || 0));
+      const years = Object.keys(rows[0]).filter(c => c.match(/^\d{4}$/)); // 2018-2025
+      const datasets = categories.map((cat, idx) => {
         return {
-          label: year,
-          data: dataPerYear,
-          backgroundColor: `hsl(${(idx * 60) % 360}, 70%, 50%)`
+          label: cat,
+          data: rows.find(r => r['Category']===cat) ? years.map(y => parseInt(rows.find(r => r['Category']===cat)[y] || 0)) : [],
+          backgroundColor: `hsl(${idx * 80}, 70%, 50%)`
         };
       });
 
       new Chart(document.getElementById('chartCombined'), {
         type: 'bar',
-        data: { labels: categories, datasets: datasets },
+        data: { labels: years, datasets: datasets },
         options: {
           responsive: true,
           plugins: { legend: { position: 'top' } },
@@ -163,6 +119,5 @@ function loadYearlyStats() {
 loadFacultyTable();
 loadYearlyStats();
 </script>
-
 </body>
 </html>
