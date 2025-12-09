@@ -3,10 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CCS Research Dashboard</title>
-
-  <!-- Common CSS -->
-  <link rel="stylesheet" href="common.css">
+  <title>CS Research Dashboard</title>
 
   <!-- DataTables CSS -->
   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
@@ -68,20 +65,8 @@
   </div>
 
   <div class="chart-container">
-    <h3>Internally Funded Projects</h3>
-    <canvas id="chartInternal"></canvas>
-  </div>
-  <div class="chart-container">
-    <h3>Externally Funded Projects</h3>
-    <canvas id="chartExternal"></canvas>
-  </div>
-  <div class="chart-container">
-    <h3>Publications</h3>
-    <canvas id="chartPublications"></canvas>
-  </div>
-  <div class="chart-container">
-    <h3>Conferences</h3>
-    <canvas id="chartConferences"></canvas>
+    <h3>Research Outputs by Year</h3>
+    <canvas id="chartCombined"></canvas>
   </div>
 </section>
 
@@ -102,7 +87,7 @@
 <script>
 // CSV Sources
 const facultyCSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR-jDPbQ-ZCkBK8_1igyWkHd3ynUPHh5l8eI6KmD-qhpu9ZeYTqYV11X7NQ82NbYyEwvSiTzGVD6-3L/pub?gid=5470856&single=true&output=csv";
-const yearlyCSV   = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR-jDPbQ-ZCkBK8_1igyWkHd3ynUPHh5l8eI6KmD-qhpu9ZeYTqYV11X7NQ82NbYyEwvSiTzGVD6-3L/pub?gid=743932525&single=true&output=csv";
+const yearlyCSV   = "YEARLY_CSV_URL_HERE"; // Replace with your yearly CSV link
 
 // Load Faculty Table
 function loadFacultyTable() {
@@ -124,7 +109,7 @@ function loadFacultyTable() {
   });
 }
 
-// Load Statistics + Charts
+// Load Statistics + Combined Chart
 function loadYearlyStats() {
   Papa.parse(yearlyCSV, {
     download: true,
@@ -143,25 +128,32 @@ function loadYearlyStats() {
       document.getElementById("pubCount").textContent = pubCount;
       document.getElementById("confCount").textContent = confCount;
 
-      // Yearly data for charts
-      const years = rows.map(r => r.Year);
-      const chartInternal = rows.map(r => parseInt(r['Internally Funded']||0));
-      const chartExternal = rows.map(r => parseInt(r['Externally Funded']||0));
-      const chartPub      = rows.map(r => parseInt(r['Publications']||0));
-      const chartConf     = rows.map(r => parseInt(r['Conferences']||0));
+      // Combined bar chart
+      const years = [...new Set(rows.map(r => r.Year))].sort();
+      const categories = ['Internally Funded','Externally Funded','Publications','Conferences'];
 
-      new Chart(document.getElementById('chartInternal'), {type:'bar', data:{labels:years,datasets:[{label:'Internally Funded', data: chartInternal, backgroundColor:'rgba(75,192,192,0.6)'}]}});
-      new Chart(document.getElementById('chartExternal'), {type:'bar', data:{labels:years,datasets:[{label:'Externally Funded', data: chartExternal, backgroundColor:'rgba(192,75,192,0.6)'}]}});
-      new Chart(document.getElementById('chartPublications'), {type:'bar', data:{labels:years,datasets:[{label:'Publications', data: chartPub, backgroundColor:'rgba(192,192,75,0.6)'}]}});
-      new Chart(document.getElementById('chartConferences'), {type:'bar', data:{labels:years,datasets:[{label:'Conferences', data: chartConf, backgroundColor:'rgba(75,75,192,0.6)'}]}});
+      const datasets = years.map((year, idx) => ({
+        label: year,
+        data: categories.map(cat => parseInt(rows.find(r => r.Year === year)[cat] || 0)),
+        backgroundColor: `hsl(${(idx * 60) % 360}, 70%, 50%)`
+      }));
+
+      new Chart(document.getElementById('chartCombined'), {
+        type: 'bar',
+        data: { labels: categories, datasets: datasets },
+        options: {
+          responsive: true,
+          plugins: { legend: { position: 'top' } },
+          scales: { y: { beginAtZero: true } }
+        }
+      });
     }
   });
 }
 
-// Load everything
+// Initialize
 loadFacultyTable();
 loadYearlyStats();
-
 </script>
 </body>
 </html>
