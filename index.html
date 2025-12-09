@@ -48,7 +48,7 @@
 <h1>CS Research Dashboard</h1>
 
 <section id="stats">
-  <h2>Yearly Research Statistics</h2>
+  <h2>Research Statistics</h2>
   <div class="stats-grid">
     <div class="stat-card">
       <span id="internalCount">0</span><br>Internally Funded
@@ -85,10 +85,10 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
-// CSV Sources
+// CSV URLs
 const facultyCSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR-jDPbQ-ZCkBK8_1igyWkHd3ynUPHh5l8eI6KmD-qhpu9ZeYTqYV11X7NQ82NbYyEwvSiTzGVD6-3L/pub?gid=5470856&single=true&output=csv";
-const yearlyCSV   = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR-jDPbQ-ZCkBK8_1igyWkHd3ynUPHh5l8eI6KmD-qhpu9ZeYTqYV11X7NQ82NbYyEwvSiTzGVD6-3L/pub?gid=743932525&single=true&output=csv";
-  
+const yearlyCSV  = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR-jDPbQ-ZCkBK8_1igyWkHd3ynUPHh5l8eI6KmD-qhpu9ZeYTqYV11X7NQ82NbYyEwvSiTzGVD6-3L/pub?gid=743932525&single=true&output=csv";
+
 // Load Faculty Table
 function loadFacultyTable() {
   Papa.parse(facultyCSV, {
@@ -117,26 +117,28 @@ function loadYearlyStats() {
     complete: function(results) {
       const rows = results.data.filter(r => Object.values(r).some(v => v));
 
-      // Counts
-      const internalCount = rows.reduce((a,r)=>a+(parseInt(r['Internally Funded']||0)),0);
-      const externalCount = rows.reduce((a,r)=>a+(parseInt(r['Externally Funded']||0)),0);
-      const pubCount      = rows.reduce((a,r)=>a+(parseInt(r['Publications']||0)),0);
-      const confCount     = rows.reduce((a,r)=>a+(parseInt(r['Conferences']||0)),0);
+      // Use the first row as the total (sum) row
+      const totalRow = rows[0];
 
-      document.getElementById("internalCount").textContent = internalCount;
-      document.getElementById("externalCount").textContent = externalCount;
-      document.getElementById("pubCount").textContent = pubCount;
-      document.getElementById("confCount").textContent = confCount;
+      // Update stat cards from total row
+      document.getElementById("internalCount").textContent = parseInt(totalRow['Internally Funded Count'] || 0);
+      document.getElementById("externalCount").textContent = parseInt(totalRow['Externally Funded Count'] || 0);
+      document.getElementById("pubCount").textContent      = parseInt(totalRow['Publications Count'] || 0);
+      document.getElementById("confCount").textContent     = parseInt(totalRow['Conferences Count'] || 0);
 
-      // Combined bar chart
+      // Combined bar chart per year
       const years = [...new Set(rows.map(r => r.Year))].sort();
       const categories = ['Internally Funded','Externally Funded','Publications','Conferences'];
 
-      const datasets = years.map((year, idx) => ({
-        label: year,
-        data: categories.map(cat => parseInt(rows.find(r => r.Year === year)[cat] || 0)),
-        backgroundColor: `hsl(${(idx * 60) % 360}, 70%, 50%)`
-      }));
+      const datasets = years.map((year, idx) => {
+        const row = rows.find(r => r.Year === year);
+        const dataPerYear = categories.map(cat => parseInt(row[cat + " Count"] || 0));
+        return {
+          label: year,
+          data: dataPerYear,
+          backgroundColor: `hsl(${(idx * 60) % 360}, 70%, 50%)`
+        };
+      });
 
       new Chart(document.getElementById('chartCombined'), {
         type: 'bar',
