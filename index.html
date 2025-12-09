@@ -1,32 +1,167 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dashboard</title>
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
-<link rel="stylesheet" href="style.css">
-<script src="libs.js"></script>
-<script src="scripts.js"></script>
-<script src="charts.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CCS Research Dashboard</title>
+
+  <!-- Common CSS -->
+  <link rel="stylesheet" href="common.css">
+
+  <!-- DataTables CSS -->
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background: #f7f7f7;
+    }
+    h1, h2, h3 {
+      text-align: center;
+    }
+    .stats-grid {
+      display: flex;
+      justify-content: space-around;
+      flex-wrap: wrap;
+      margin-bottom: 30px;
+    }
+    .stat-card {
+      background: #0054a6;
+      color: white;
+      padding: 20px;
+      margin: 10px;
+      border-radius: 8px;
+      flex: 1 1 180px;
+      text-align: center;
+    }
+    .chart-container {
+      width: 90%;
+      margin: 30px auto;
+    }
+    table.dataTable {
+      background: white;
+      width: 90%;
+      margin: 20px auto;
+    }
+  </style>
 </head>
 <body>
-<h1>Research Dashboard</h1>
 
-<h2>Projects per Year</h2>
-<div id="chartContainer">
-  <canvas id="dashboardChart"></canvas>
-</div>
+<h1>CS Research Dashboard</h1>
 
-<h2>Faculty List</h2>
-<table id="facultyTable" class="display">
-  <thead><tr></tr></thead>
-  <tbody></tbody>
-</table>
+<section id="stats">
+  <h2>Yearly Research Statistics</h2>
+  <div class="stats-grid">
+    <div class="stat-card">
+      <span id="internalCount">0</span><br>Internally Funded
+    </div>
+    <div class="stat-card">
+      <span id="externalCount">0</span><br>Externally Funded
+    </div>
+    <div class="stat-card">
+      <span id="pubCount">0</span><br>Publications
+    </div>
+    <div class="stat-card">
+      <span id="confCount">0</span><br>Conferences
+    </div>
+  </div>
+
+  <div class="chart-container">
+    <h3>Internally Funded Projects</h3>
+    <canvas id="chartInternal"></canvas>
+  </div>
+  <div class="chart-container">
+    <h3>Externally Funded Projects</h3>
+    <canvas id="chartExternal"></canvas>
+  </div>
+  <div class="chart-container">
+    <h3>Publications</h3>
+    <canvas id="chartPublications"></canvas>
+  </div>
+  <div class="chart-container">
+    <h3>Conferences</h3>
+    <canvas id="chartConferences"></canvas>
+  </div>
+</section>
+
+<section>
+  <h2>Faculty Members</h2>
+  <table id="facultyTable" class="display">
+    <thead></thead>
+    <tbody></tbody>
+  </table>
+</section>
+
+<!-- JS Libraries -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
-const facultyCsv = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR-jDPbQ-ZCkBK8_1igyWkHd3ynUPHh5l8eI6KmD-qhpu9ZeYTqYV11X7NQ82NbYyEwvSiTzGVD6-3L/pub?gid=5470856&single=true&output=csv';
-loadCSV(facultyCsv, 'facultyTable');
+// CSV Sources
+const facultyCSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR-jDPbQ-ZCkBK8_1igyWkHd3ynUPHh5l8eI6KmD-qhpu9ZeYTqYV11X7NQ82NbYyEwvSiTzGVD6-3L/pub?gid=5470856&single=true&output=csv";
+const yearlyCSV   = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR-jDPbQ-ZCkBK8_1igyWkHd3ynUPHh5l8eI6KmD-qhpu9ZeYTqYV11X7NQ82NbYyEwvSiTzGVD6-3L/pub?gid=743932525&single=true&output=csv";
+
+// Load Faculty Table
+function loadFacultyTable() {
+  Papa.parse(facultyCSV, {
+    download: true,
+    header: true,
+    complete: function(results) {
+      const data = results.data.filter(r => Object.values(r).some(v => v));
+      const table = $("#facultyTable");
+      const headers = Object.keys(data[0]);
+      table.find("thead").html("<tr>" + headers.map(h => `<th>${h}</th>`).join("") + "</tr>");
+      let tbody = "";
+      data.forEach(row => {
+        tbody += "<tr>" + headers.map(h => `<td>${row[h] || ""}</td>`).join("") + "</tr>";
+      });
+      table.find("tbody").html(tbody);
+      table.DataTable({scrollX: true, pageLength: 10});
+    }
+  });
+}
+
+// Load Statistics + Charts
+function loadYearlyStats() {
+  Papa.parse(yearlyCSV, {
+    download: true,
+    header: true,
+    complete: function(results) {
+      const rows = results.data.filter(r => Object.values(r).some(v => v));
+
+      // Counts
+      const internalCount = rows.reduce((a,r)=>a+(parseInt(r['Internally Funded']||0)),0);
+      const externalCount = rows.reduce((a,r)=>a+(parseInt(r['Externally Funded']||0)),0);
+      const pubCount      = rows.reduce((a,r)=>a+(parseInt(r['Publications']||0)),0);
+      const confCount     = rows.reduce((a,r)=>a+(parseInt(r['Conferences']||0)),0);
+
+      document.getElementById("internalCount").textContent = internalCount;
+      document.getElementById("externalCount").textContent = externalCount;
+      document.getElementById("pubCount").textContent = pubCount;
+      document.getElementById("confCount").textContent = confCount;
+
+      // Yearly data for charts
+      const years = rows.map(r => r.Year);
+      const chartInternal = rows.map(r => parseInt(r['Internally Funded']||0));
+      const chartExternal = rows.map(r => parseInt(r['Externally Funded']||0));
+      const chartPub      = rows.map(r => parseInt(r['Publications']||0));
+      const chartConf     = rows.map(r => parseInt(r['Conferences']||0));
+
+      new Chart(document.getElementById('chartInternal'), {type:'bar', data:{labels:years,datasets:[{label:'Internally Funded', data: chartInternal, backgroundColor:'rgba(75,192,192,0.6)'}]}});
+      new Chart(document.getElementById('chartExternal'), {type:'bar', data:{labels:years,datasets:[{label:'Externally Funded', data: chartExternal, backgroundColor:'rgba(192,75,192,0.6)'}]}});
+      new Chart(document.getElementById('chartPublications'), {type:'bar', data:{labels:years,datasets:[{label:'Publications', data: chartPub, backgroundColor:'rgba(192,192,75,0.6)'}]}});
+      new Chart(document.getElementById('chartConferences'), {type:'bar', data:{labels:years,datasets:[{label:'Conferences', data: chartConf, backgroundColor:'rgba(75,75,192,0.6)'}]}});
+    }
+  });
+}
+
+// Load everything
+loadFacultyTable();
+loadYearlyStats();
+
 </script>
 </body>
 </html>
