@@ -25,14 +25,8 @@
 </table>
 
 <script>
-const facultyCsv = 'FACULTY_CSV_LINK';
+const facultyCsv = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR-jDPbQ-ZCkBK8_1igyWkHd3ynUPHh5l8eI6KmD-qhpu9ZeYTqYV11X7NQ82NbYyEwvSiTzGVD6-3L/pub?gid=5470856&single=true&output=csv';
 loadCSV(facultyCsv, 'facultyTable');
-
-// Example: dashboard chart using Internally Funded projects CSV
-const internalCsv = 'INTERNAL_PROJECTS_CSV_LINK';
-loadCSV(internalCsv, 'dummy', (data) => {
-  generateBarChart(data, 'Year', 'dashboardChart', 'Projects per Year');
-});
 </script>
 </body>
 </html>
