@@ -17,6 +17,9 @@
   <!-- DataTables JS -->
   <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 
+  <!-- PapaParse JS for CSV parsing -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -51,48 +54,73 @@
   </table>
 
   <script>
-   const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR-jDPbQ-ZCkBK8_1igyWkHd3ynUPHh5l8eI6KmD-qhpu9ZeYTqYV11X7NQ82NbYyEwvSiTzGVD6-3L/pub?gid=0&single=true&output=csv';
+    const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR-jDPbQ-ZCkBK8_1igyWkHd3ynUPHh5l8eI6KmD-qhpu9ZeYTqYV11X7NQ82NbYyEwvSiTzGVD6-3L/pub?gid=0&single=true&output=csv';
 
-fetch(csvUrl)
-  .then(response => response.text())
-  .then(csvText => {
-    // Parse CSV
-    const rows = csvText.split('\n').map(r => r.split(','));
-    const headers = rows[0];
-    const tbody = $('#projectsTable tbody');
-    const thead = $('#projectsTable thead tr');
+    Papa.parse(csvUrl, {
+      download: true,
+      header: true,
+      skipEmptyLines: true,
+      complete: function(results) {
+        const data = results.data;
+        const headers = results.meta.fields;
 
-    // Build table headers
-    headers.forEach(h => thead.append(`<th>${h}</th>`));
+        // Build table headers
+        const thead = $('#projectsTable thead tr');
+        headers.forEach(h => thead.append(`<th>${h}</th>`));
 
-    // Build table rows
-    rows.slice(1).forEach(row => {
-      const tr = '<tr>' + row.map(cell => `<td>${cell}</td>`).join('') + '</tr>';
-      tbody.append(tr);
+        // Build table rows
+        const tbody = $('#projectsTable tbody');
+        data.forEach(row => {
+          let tr = '<tr>';
+          headers.forEach(h => tr += `<td>${row[h] || ''}</td>`);
+          tr += '</tr>';
+          tbody.append(tr);
+        });
+
+        // Initialize DataTable
+        $('#projectsTable').DataTable({
+          pageLength: 10,
+          order: [[0, 'desc']]
+        });
+
+        // Build chart (projects per year)
+        const yearCounts = {};
+        data.forEach(row => {
+          const year = row['Year'];
+          if(year) yearCounts[year] = (yearCounts[year] || 0) + 1;
+        });
+
+        const chartLabels = Object.keys(yearCounts).sort((a,b) => a-b);
+        const chartData = chartLabels.map(y => yearCounts[y]);
+
+        new Chart(document.getElementById('projectsChart'), {
+          type: 'bar',
+          data: {
+            labels: chartLabels,
+            datasets: [{
+              label: 'Projects per Year',
+              data: chartData,
+              backgroundColor: 'rgba(75, 192, 192, 0.6)',
+              borderColor: 'rgba(75, 192, 192, 1)',
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: { display: false },
+              title: { display: true, text: 'Projects by Year' }
+            },
+            scales: {
+              y: { beginAtZero: true, precision: 0 }
+            }
+          }
+        });
+      },
+      error: function(err) {
+        console.error('Error parsing CSV:', err);
+      }
     });
-
-    // Initialize DataTable
-    $('#projectsTable').DataTable();
-
-    // Build chart (projects per year)
-    const yearIndex = headers.indexOf('Year');
-    const yearCounts = {};
-    rows.slice(1).forEach(row => {
-      const year = row[yearIndex];
-      yearCounts[year] = (yearCounts[year] || 0) + 1;
-    });
-
-    const chartLabels = Object.keys(yearCounts).sort();
-    const chartData = chartLabels.map(y => yearCounts[y]);
-
-    new Chart(document.getElementById('projectsChart'), {
-      type: 'bar',
-      data: { labels: chartLabels, datasets: [{ label: 'Projects per Year', data: chartData, backgroundColor: 'rgba(75, 192, 192, 0.6)' }] },
-      options: { responsive: true }
-    });
-  })
-  .catch(err => console.error(err));
-
   </script>
 </body>
 </html>
