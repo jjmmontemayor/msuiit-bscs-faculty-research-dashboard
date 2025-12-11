@@ -8,53 +8,60 @@
 <link rel="stylesheet" href="css/style.css">
 
 <style>
-/* Two-panel layout */
 .main-grid {
   display: flex;
   gap: 20px;
   padding: 20px;
   flex-wrap: wrap;
+  transition: all 0.5s ease;
 }
 
 .left-panel, .right-panel {
   background: white;
   padding: 20px;
   border-radius: 10px;
+  transition: all 0.5s ease;
 }
 
-.left-panel {
-  flex: 1;
-  min-width: 300px;
-}
+.left-panel { flex: 1; min-width: 300px; }
+.right-panel { flex: 1; min-width: 300px; }
 
-.right-panel {
-  flex: 1;
-  min-width: 300px;
-}
+.chart-container { width: 100%; }
 
-/* Chart container */
-.chart-container {
-  width: 100%;
-}
-
-/* Project detail panel hidden by default */
 #projectDetail {
   display: none;
+  opacity: 0;
+  transition: opacity 0.5s ease;
 }
 
-/* Responsive */
-@media(max-width: 900px) {
-  .main-grid { flex-direction: column; }
+.fade-in { display: block !important; opacity: 1 !important; }
+
+.clickable-row { cursor: pointer; transition: background 0.2s; }
+.clickable-row:hover { background-color: #f0f8ff; }
+
+#backDashboard {
+  margin-bottom: 10px;
+  display: inline-block;
+  padding: 6px 12px;
+  background: #0054a6;
+  color: white;
+  border-radius: 5px;
+  text-decoration: none;
 }
+#backDashboard:hover { background: #003d7a; }
+
+@media(max-width: 900px) { .main-grid { flex-direction: column; } }
 </style>
 </head>
 <body>
 
 <h1>Internally Funded Projects</h1>
 
-<div class="main-grid">
+<a id="backDashboard" href="index.html">← Back to Dashboard</a>
+
+<div class="main-grid" id="mainGrid">
   <!-- Left: Chart -->
-  <div class="left-panel">
+  <div class="left-panel" id="leftPanel">
     <h2>Internally Funded Projects per Year</h2>
     <div class="chart-container">
       <canvas id="internalChart"></canvas>
@@ -62,7 +69,7 @@
   </div>
 
   <!-- Right: Table / Details -->
-  <div class="right-panel">
+  <div class="right-panel" id="rightPanel">
     <div id="tableContainer">
       <h2>Projects</h2>
       <table id="internalTable" class="display" style="width:100%;">
@@ -93,17 +100,14 @@ window.addEventListener('load', () => {
       if (!rawData.length) return;
 
       const allHeaders = Object.keys(rawData[0]);
-      const tableCols = [allHeaders[0], allHeaders[1], allHeaders[2]]; // A, B, C
+      const tableCols = [allHeaders[0], allHeaders[1], allHeaders[2]]; // columns A, B, C
 
       // Build table
       const $table = $("#internalTable");
       $table.find("thead").html("<tr>" + tableCols.map(h => `<th>${h}</th>`).join("") + "</tr>");
       let tbody = "";
       rawData.forEach((row, idx) => {
-        tbody += "<tr data-index='"+idx+"'>" + tableCols.map((h,i) => {
-          if(i === 1) return `<td class="project-title">${row[h] || ""}</td>`; // clickable column B
-          return `<td>${row[h] || ""}</td>`;
-        }).join("") + "</tr>";
+        tbody += "<tr class='clickable-row' data-index='"+idx+"'>" + tableCols.map(h => `<td>${row[h] || ""}</td>`).join("") + "</tr>";
       });
       $table.find("tbody").html(tbody);
       $table.DataTable({scrollX: true, pageLength: 10});
@@ -121,42 +125,38 @@ window.addEventListener('load', () => {
       const years = Object.keys(countPerYear).sort();
       const counts = years.map(y => countPerYear[y]);
 
-      new Chart(document.getElementById("internalChart"), {
+      const ctx = document.getElementById("internalChart").getContext('2d');
+      new Chart(ctx, {
         type: "bar",
         data: {
           labels: years,
-          datasets: [{
-            label: "Internally Funded Projects",
-            data: counts,
-            backgroundColor: "#1f77b4"
-          }]
+          datasets: [{ label: "Internally Funded Projects", data: counts, backgroundColor: "#1f77b4" }]
         },
-        options: {
-          responsive: true,
-          plugins: { legend: { position: "top" } },
-          scales: { y: { beginAtZero: true, precision:0 } }
-        }
+        options: { responsive: true, plugins: { legend: { position: "top" } }, scales: { y: { beginAtZero: true, precision:0 } } }
       });
 
-      // Click on project title
-      $(document).on('click', '.project-title', function() {
-        const rowIdx = $(this).closest('tr').data('index');
+      // Click on row → show details and animate chart shrinking
+      $(document).on('click', '.clickable-row', function() {
+        const rowIdx = $(this).data('index');
         const project = rawData[rowIdx];
-        $('#tableContainer').hide();
-        $('#projectDetail').show();
+
+        // Animate chart shrinking
+        $('#leftPanel').animate({ flex: '0 0 0px', opacity: 0 }, 400);
+        $('#tableContainer').fadeOut(200, function() {
+          $('#projectDetail').addClass('fade-in');
+        });
 
         let contentHtml = "<ul>";
-        allHeaders.forEach(h => {
-          contentHtml += `<li><strong>${h}:</strong> ${project[h] || ''}</li>`;
-        });
+        allHeaders.forEach(h => { contentHtml += `<li><strong>${h}:</strong> ${project[h] || ''}</li>`; });
         contentHtml += "</ul>";
         $('#detailContent').html(contentHtml);
       });
 
-      // Back button
+      // Back to projects → restore chart & table
       $('#backBtn').on('click', () => {
-        $('#projectDetail').hide();
-        $('#tableContainer').show();
+        $('#projectDetail').removeClass('fade-in');
+        $('#leftPanel').animate({ flex: '1', opacity: 1 }, 400);
+        $('#tableContainer').fadeIn(400);
       });
     }
   });
