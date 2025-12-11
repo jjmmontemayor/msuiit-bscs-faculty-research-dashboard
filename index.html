@@ -102,7 +102,11 @@ async function showFacultyDetails(name) {
     loadCSV(CSV_SOURCES.conferences)
   ]);
 
-  const filterMatch = (data, cols) => data.filter(r => cols.some(c => (r[c]||'').toLowerCase().includes(name.toLowerCase())));
+  // Create regex from faculty name, case-insensitive, match anywhere
+  const nameRegex = new RegExp(name.split(' ').slice(-1)[0], 'i'); // last name only
+
+  const filterMatch = (data, cols) => 
+    data.filter(r => cols.some(c => nameRegex.test(r[c] || '')));
 
   const internalMatches = filterMatch(internals, ['D','E']);
   const externalMatches = filterMatch(externals, ['D','E']);
