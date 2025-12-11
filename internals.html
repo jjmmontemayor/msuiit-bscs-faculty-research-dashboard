@@ -8,78 +8,91 @@
 <link rel="stylesheet" href="css/style.css">
 
 <style>
+/* Two-panel layout */
 .main-grid {
   display: flex;
   gap: 20px;
   padding: 20px;
   flex-wrap: wrap;
-  transition: all 0.5s ease;
 }
 
 .left-panel, .right-panel {
   background: white;
   padding: 20px;
   border-radius: 10px;
-  transition: all 0.5s ease;
 }
 
-.left-panel { flex: 1; min-width: 300px; }
-.right-panel { flex: 1; min-width: 300px; }
+.left-panel {
+  flex: 1;
+  min-width: 350px;
+}
 
-.chart-container { width: 100%; }
+.right-panel {
+  flex: 1;
+  min-width: 350px;
+}
 
+/* Chart container */
+.chart-container {
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+/* Project detail panel hidden by default */
 #projectDetail {
   display: none;
-  opacity: 0;
-  transition: opacity 0.5s ease;
+  margin-top: 20px;
+  padding: 10px;
+  border-top: 1px solid #ccc;
 }
 
-.fade-in { display: block !important; opacity: 1 !important; }
+/* Highlighted row */
+.highlighted {
+  background-color: #d0e4ff !important;
+  cursor: pointer;
+}
 
-.clickable-row { cursor: pointer; transition: background 0.2s; }
-.clickable-row:hover { background-color: #f0f8ff; }
-
-#backDashboard {
+/* Home button */
+#homeBtn {
+  background: none;
+  border: none;
+  font-size: 1.5em;
+  cursor: pointer;
   margin-bottom: 10px;
-  display: inline-block;
-  padding: 6px 12px;
-  background: #0054a6;
-  color: white;
-  border-radius: 5px;
-  text-decoration: none;
 }
-#backDashboard:hover { background: #003d7a; }
 
-@media(max-width: 900px) { .main-grid { flex-direction: column; } }
+/* Responsive */
+@media(max-width: 900px) {
+  .main-grid { flex-direction: column; }
+}
 </style>
 </head>
 <body>
 
 <h1>Internally Funded Projects</h1>
 
-<a id="backDashboard" href="index.html">← Back to Dashboard</a>
-
-<div class="main-grid" id="mainGrid">
-  <!-- Left: Chart -->
-  <div class="left-panel" id="leftPanel">
-    <h2>Internally Funded Projects per Year</h2>
-    <div class="chart-container">
-      <canvas id="internalChart"></canvas>
-    </div>
+<div class="main-grid">
+  <!-- Left: Projects Table -->
+  <div class="left-panel">
+    <h2>Projects</h2>
+    <table id="internalTable" class="display" style="width:100%;">
+      <thead><tr></tr></thead>
+      <tbody></tbody>
+    </table>
   </div>
 
-  <!-- Right: Table / Details -->
-  <div class="right-panel" id="rightPanel">
-    <div id="tableContainer">
-      <h2>Projects</h2>
-      <table id="internalTable" class="display" style="width:100%;">
-        <thead><tr></tr></thead>
-        <tbody></tbody>
-      </table>
+  <!-- Right: Chart + Details -->
+  <div class="right-panel">
+    <button id="homeBtn" title="Back to Dashboard">🏠</button>
+
+    <div id="chartContainer">
+      <h2>Internally Funded Projects per Year</h2>
+      <div class="chart-container">
+        <canvas id="internalChart"></canvas>
+      </div>
     </div>
 
     <div id="projectDetail">
-      <button id="backBtn">← Back to Projects</button>
       <h2>Project Details</h2>
       <div id="detailContent"></div>
     </div>
@@ -88,6 +101,8 @@
 
 <script src="js/libs.js"></script>
 <script src="js/sources.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
 window.addEventListener('load', () => {
@@ -100,7 +115,7 @@ window.addEventListener('load', () => {
       if (!rawData.length) return;
 
       const allHeaders = Object.keys(rawData[0]);
-      const tableCols = [allHeaders[0], allHeaders[1], allHeaders[2]]; // columns A, B, C
+      const tableCols = [allHeaders[0], allHeaders[1], allHeaders[2]]; // A, B, C
 
       // Build table
       const $table = $("#internalTable");
@@ -125,38 +140,48 @@ window.addEventListener('load', () => {
       const years = Object.keys(countPerYear).sort();
       const counts = years.map(y => countPerYear[y]);
 
-      const ctx = document.getElementById("internalChart").getContext('2d');
-      new Chart(ctx, {
+      const internalChart = new Chart(document.getElementById("internalChart"), {
         type: "bar",
         data: {
           labels: years,
-          datasets: [{ label: "Internally Funded Projects", data: counts, backgroundColor: "#1f77b4" }]
+          datasets: [{
+            label: "Internally Funded Projects",
+            data: counts,
+            backgroundColor: "#1f77b4"
+          }]
         },
-        options: { responsive: true, plugins: { legend: { position: "top" } }, scales: { y: { beginAtZero: true, precision:0 } } }
+        options: {
+          responsive: true,
+          plugins: { legend: { position: "top" } },
+          scales: { y: { beginAtZero: true, precision:0 } }
+        }
       });
 
-      // Click on row → show details and animate chart shrinking
+      // Click on table row to show details below chart
       $(document).on('click', '.clickable-row', function() {
         const rowIdx = $(this).data('index');
         const project = rawData[rowIdx];
 
-        // Animate chart shrinking
-        $('#leftPanel').animate({ flex: '0 0 0px', opacity: 0 }, 400);
-        $('#tableContainer').fadeOut(200, function() {
-          $('#projectDetail').addClass('fade-in');
-        });
+        $('.clickable-row').removeClass('highlighted');
+        $(this).addClass('highlighted');
 
         let contentHtml = "<ul>";
-        allHeaders.forEach(h => { contentHtml += `<li><strong>${h}:</strong> ${project[h] || ''}</li>`; });
+        allHeaders.forEach(h => {
+          contentHtml += `<li><strong>${h}:</strong> ${project[h] || ''}</li>`;
+        });
         contentHtml += "</ul>";
         $('#detailContent').html(contentHtml);
+
+        // Show details and smooth scroll
+        $('#projectDetail').fadeIn();
+        $('html, body').animate({
+          scrollTop: $('#chartContainer').offset().top
+        }, 500);
       });
 
-      // Back to projects → restore chart & table
-      $('#backBtn').on('click', () => {
-        $('#projectDetail').removeClass('fade-in');
-        $('#leftPanel').animate({ flex: '1', opacity: 1 }, 400);
-        $('#tableContainer').fadeIn(400);
+      // Home button: go back to dashboard
+      $('#homeBtn').on('click', () => {
+        window.location.href = 'index.html';
       });
     }
   });
