@@ -1,69 +1,56 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MSU-IIT CS Faculty Research and Creativity Dashboard</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MSU-IIT CS Faculty Research and Creativity Dashboard</title>
 
-  <!-- DataTables CSS -->
-  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
 
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 20px;
-      background: #f7f7f7;
-    }
-    h1, h2, h3 { text-align: center; }
+<style>
+  body { font-family: Arial, sans-serif; margin: 20px; background: #f7f7f7; }
+  h1, h2, h3 { text-align: center; }
 
-    /* STAT CARDS */
-    .stats-grid {
-      display: flex;
-      justify-content: space-around;
-      flex-wrap: wrap;
-      margin-bottom: 30px;
-    }
-    .stat-card {
-      background: #0054a6;
-      color: white;
-      padding: 20px;
-      margin: 10px;
-      border-radius: 8px;
-      flex: 1 1 180px;
-      text-align: center;
-      cursor: pointer;
-      transition: 0.2s;
-    }
-    .stat-card:hover {
-      background: #003d7a;
-      transform: scale(1.03);
-    }
+  /* STAT CARDS */
+  .stats-grid {
+    display: flex; justify-content: space-around; flex-wrap: wrap; margin-bottom: 30px;
+  }
+  .stat-card {
+    background: #0054a6; color: white; padding: 20px; margin: 10px; border-radius: 8px;
+    flex: 1 1 180px; text-align: center; cursor: pointer; transition: 0.2s;
+  }
+  .stat-card:hover { background: #003d7a; transform: scale(1.03); }
 
-    /* 2-COLUMN LAYOUT */
-    .main-grid {
-      display: flex;
-      flex-direction: row;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 20px;
-      padding: 10px 20px;
-    }
-    .left-panel, .right-panel {
-      background: white;
-      padding: 20px;
-      border-radius: 10px;
-    }
-    .left-panel { flex: 1; max-width: 48%; min-width: 350px; }
-    .right-panel { flex: 1; max-width: 48%; min-width: 350px; }
+  /* 2-COLUMN LAYOUT */
+  .main-grid {
+    display: flex; flex-direction: row; justify-content: space-between;
+    align-items: flex-start; gap: 20px; padding: 10px 20px;
+  }
+  .left-panel, .right-panel {
+    background: white; padding: 20px; border-radius: 10px;
+  }
+  .left-panel { flex: 1; max-width: 48%; min-width: 350px; }
+  .right-panel { flex: 1; max-width: 48%; min-width: 350px; }
+  .chart-container { width: 100%; }
+  table.dataTable { width: 100%; }
 
-    .chart-container { width: 100%; }
-    table.dataTable { width: 100%; }
+  /* Faculty Detail (full width below panels) */
+  #facultyDetail {
+    display: none;
+    width: 100%;
+    margin-top: 20px;
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+  }
+  #facultyDetail h2 { margin-top: 0; }
+  #facultyDetail button { margin-bottom: 10px; }
 
-    @media(max-width: 900px) {
-      .main-grid { flex-direction: column; }
-      .left-panel, .right-panel { max-width: 100%; }
-    }
-  </style>
+  @media(max-width: 900px) {
+    .main-grid { flex-direction: column; }
+    .left-panel, .right-panel { max-width: 100%; }
+  }
+</style>
 </head>
 <body>
 
@@ -72,123 +59,135 @@
 <section id="stats">
   <h2>Yearly Research Statistics</h2>
   <div class="stats-grid">
-    <div class="stat-card" onclick="location.href='internals.html'">
-      <span id="internalCount">0</span><br>Internally Funded
-    </div>
-
-    <div class="stat-card" onclick="location.href='externals.html'">
-      <span id="externalCount">0</span><br>Externally Funded
-    </div>
-
-    <div class="stat-card" onclick="location.href='publications.html'">
-      <span id="pubCount">0</span><br>Publications
-    </div>
-
-    <div class="stat-card" onclick="location.href='conferences.html'">
-      <span id="confCount">0</span><br>Conferences
-    </div>
+    <div class="stat-card" onclick="location.href='internals.html'"><span id="internalCount">0</span><br>Internally Funded</div>
+    <div class="stat-card" onclick="location.href='externals.html'"><span id="externalCount">0</span><br>Externally Funded</div>
+    <div class="stat-card" onclick="location.href='publications.html'"><span id="pubCount">0</span><br>Publications</div>
+    <div class="stat-card" onclick="location.href='conferences.html'"><span id="confCount">0</span><br>Conferences</div>
   </div>
 </section>
 
 <div class="main-grid">
-
   <div class="left-panel">
     <h2>Research Outputs by Year</h2>
-    <div class="chart-container">
-      <canvas id="chartCombined"></canvas>
-    </div>
+    <div class="chart-container"><canvas id="chartCombined"></canvas></div>
   </div>
-
   <div class="right-panel">
     <h2>Faculty Members</h2>
-    <table id="facultyTable" class="display">
-      <thead></thead>
-      <tbody></tbody>
-    </table>
+    <table id="facultyTable" class="display"><thead></thead><tbody></tbody></table>
   </div>
-
 </div>
 
-<!-- JS Loader -->
+<!-- Faculty Details below panels -->
+<div id="facultyDetail">
+  <button id="closeDetail">← Close Details</button>
+  <h2 id="facultyName"></h2>
+  <div id="facultyTables"></div>
+</div>
+
 <script src="js/libs.js"></script>
 <script src="js/sources.js"></script>
 
-<!-- Main script -->
 <script>
-function initDashboard() {
-  // Load Faculty Table
-  function loadFacultyTable() {
-    Papa.parse(CSV_SOURCES.faculty, {
-      download: true,
-      header: true,
-      complete: function(results) {
-        const data = results.data.filter(r => Object.values(r).some(v => v));
-        if (!data.length) return;
-
-        const table = $("#facultyTable");
-        const headers = Object.keys(data[0]);
-
-        table.find("thead").html("<tr>" + headers.map(h => `<th>${h}</th>`).join("") + "</tr>");
-        let tbody = "";
-        data.forEach(row => {
-          tbody += "<tr>" + headers.map(h => `<td>${row[h] || ""}</td>`).join("") + "</tr>";
-        });
-        table.find("tbody").html(tbody);
-        table.DataTable({scrollX: true, pageLength: 10});
-      }
-    });
-  }
-
-  // Load Yearly Stats + Chart
-  function loadYearlyStats() {
-    Papa.parse(CSV_SOURCES.yearly, {
-      download: true,
-      header: true,
-      skipEmptyLines: true,
-      complete: function(results) {
-        const rows = results.data;
-        if (!rows.length) return;
-
-        const sample = rows[0];
-        const years = Object.keys(sample).filter(k => /^\d{4}$/.test(k));
-
-        const map = {};
-        rows.forEach(r => map[r["Category"]] = r);
-
-        document.getElementById("internalCount").textContent = map["Internally Funded"]?.["Total"] || 0;
-        document.getElementById("externalCount").textContent = map["Externally Funded"]?.["Total"] || 0;
-        document.getElementById("pubCount").textContent      = map["Publications"]?.["Total"] || 0;
-        document.getElementById("confCount").textContent     = map["Conferences"]?.["Total"] || 0;
-
-        const categories = ["Internally Funded","Externally Funded","Publications","Conferences"];
-        const colors = ["#1f77b4","#ff7f0e","#2ca02c","#d62728"];
-
-        const datasets = categories.map((cat, i) => ({
-          label: cat,
-          backgroundColor: colors[i],
-          data: years.map(y => parseInt(map[cat]?.[y] || 0))
-        }));
-
-        new Chart(document.getElementById("chartCombined"), {
-          type: "bar",
-          data: { labels: years, datasets: datasets },
-          options: {
-            responsive: true,
-            plugins: { legend: { position: "top" } },
-            scales: { y: { beginAtZero: true } }
-          }
-        });
-      }
-    });
-  }
-
-  // Initialize all
-  loadFacultyTable();
-  loadYearlyStats();
+async function loadCSV(url) {
+  return new Promise(resolve => {
+    Papa.parse(url, { download:true, header:true, skipEmptyLines:true, complete: results => resolve(results.data) });
+  });
 }
 
-// Wait for libs.js to finish loading dependencies
-window.addEventListener("load", initDashboard);
+async function showFacultyDetails(name) {
+  const [internals, externals, publications, conferences] = await Promise.all([
+    loadCSV(CSV_SOURCES.internals),
+    loadCSV(CSV_SOURCES.externals),
+    loadCSV(CSV_SOURCES.publications),
+    loadCSV(CSV_SOURCES.conferences)
+  ]);
+
+  const filterMatch = (data, cols) => data.filter(r => cols.some(c => (r[c]||'').toLowerCase().includes(name.toLowerCase())));
+
+  const internalMatches = filterMatch(internals, ['D','E']);
+  const externalMatches = filterMatch(externals, ['D','E']);
+  const publicationMatches = filterMatch(publications, ['C']);
+  const conferenceMatches = filterMatch(conferences, ['B']);
+
+  function buildTable(title, data) {
+    if(!data.length) return `<h3>${title}: None</h3>`;
+    const headers = Object.keys(data[0]);
+    let tbl = `<h3>${title}</h3><table class="display"><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>`;
+    data.forEach(row => { tbl += '<tr>' + headers.map(h=>`<td>${row[h]||''}</td>`).join('') + '</tr>'; });
+    tbl += '</tbody></table>';
+    return tbl;
+  }
+
+  let html = '';
+  html += buildTable('Internally Funded', internalMatches);
+  html += buildTable('Externally Funded', externalMatches);
+  html += buildTable('Publications', publicationMatches);
+  html += buildTable('Conferences', conferenceMatches);
+
+  document.getElementById('facultyName').textContent = name;
+  document.getElementById('facultyTables').innerHTML = html;
+
+  document.querySelectorAll('#facultyTables table').forEach(tbl => $(tbl).DataTable({scrollX:true, pageLength:5}));
+
+  document.getElementById('facultyDetail').style.display = 'block';
+}
+
+function attachFacultyClicks() {
+  $('#facultyTable tbody').on('click', 'tr', function() {
+    const name = $(this).find('td').first().text();
+    showFacultyDetails(name);
+  });
+  $('#closeDetail').on('click', () => document.getElementById('facultyDetail').style.display = 'none');
+}
+
+function loadFacultyTable() {
+  return new Promise(resolve => {
+    Papa.parse(CSV_SOURCES.faculty, {
+      download:true, header:true,
+      complete: results => {
+        const data = results.data.filter(r => Object.values(r).some(v => v));
+        const table = $("#facultyTable");
+        const headers = Object.keys(data[0]);
+        table.find("thead").html("<tr>" + headers.map(h=>`<th>${h}</th>`).join('') + "</tr>");
+        let tbody = '';
+        data.forEach(row => { tbody += '<tr>' + headers.map(h=>`<td>${row[h]||''}</td>`).join('') + '</tr>'; });
+        table.find("tbody").html(tbody);
+        table.DataTable({scrollX:true, pageLength:10});
+        resolve();
+      }
+    });
+  });
+}
+
+function loadYearlyStats() {
+  Papa.parse(CSV_SOURCES.yearly, {
+    download:true, header:true, skipEmptyLines:true,
+    complete: function(results){
+      const rows = results.data;
+      if(!rows.length) return;
+      const sample = rows[0];
+      const years = Object.keys(sample).filter(k=>/^\d{4}$/.test(k));
+      const map = {};
+      rows.forEach(r=>map[r["Category"]]=r);
+      document.getElementById("internalCount").textContent = map["Internally Funded"]?.["Total"]||0;
+      document.getElementById("externalCount").textContent = map["Externally Funded"]?.["Total"]||0;
+      document.getElementById("pubCount").textContent = map["Publications"]?.["Total"]||0;
+      document.getElementById("confCount").textContent = map["Conferences"]?.["Total"]||0;
+
+      const categories = ["Internally Funded","Externally Funded","Publications","Conferences"];
+      const colors = ["#1f77b4","#ff7f0e","#2ca02c","#d62728"];
+      const datasets = categories.map((cat,i)=>({label:cat, backgroundColor:colors[i], data:years.map(y=>parseInt(map[cat]?.[y]||0))}));
+      new Chart(document.getElementById("chartCombined"), {type:"bar", data:{labels:years,datasets:datasets}, options:{responsive:true, plugins:{legend:{position:"top"}}, scales:{y:{beginAtZero:true}}}});
+    }
+  });
+}
+
+// Initialize dashboard
+window.addEventListener('load', async () => {
+  await loadFacultyTable();
+  attachFacultyClicks();
+  loadYearlyStats();
+});
 </script>
 </body>
 </html>
