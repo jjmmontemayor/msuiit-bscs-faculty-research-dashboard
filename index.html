@@ -1,71 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MSU-IIT CS Faculty Research and Creativity Dashboard</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MSU-IIT CS Faculty Research Dashboard</title>
 
-  <!-- DataTables CSS -->
-  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+<!-- DataTables CSS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+<link rel="stylesheet" href="css/style.css">
 
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 20px;
-      background: #f7f7f7;
-    }
-    h1, h2, h3 { text-align: center; }
-
-    /* STAT CARDS */
-    .stats-grid {
-      display: flex;
-      justify-content: space-around;
-      flex-wrap: wrap;
-      margin-bottom: 30px;
-    }
-    .stat-card {
-      background: #0054a6;
-      color: white;
-      padding: 20px;
-      margin: 10px;
-      border-radius: 8px;
-      flex: 1 1 180px;
-      text-align: center;
-      cursor: pointer;
-      transition: 0.2s;
-    }
-    .stat-card:hover {
-      background: #003d7a;
-      transform: scale(1.03);
-    }
-
-    /* 2-COLUMN LAYOUT */
-    .main-grid {
-      display: flex;
-      flex-direction: row;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 20px;
-      padding: 10px 20px;
-    }
-    .left-panel, .right-panel {
-      background: white;
-      padding: 20px;
-      border-radius: 10px;
-    }
-    .left-panel { flex: 1; max-width: 48%; min-width: 350px; }
-    .right-panel { flex: 1; max-width: 48%; min-width: 350px; }
-
-    .chart-container { width: 100%; }
-    table.dataTable { width: 100%; }
-
-    @media(max-width: 900px) {
-      .main-grid { flex-direction: column; }
-      .left-panel, .right-panel { max-width: 100%; }
-    }
-  </style>
 </head>
 <body>
+
+<!-- Navigation -->
+<div id="navContainer"></div>
 
 <h1>CS Research Dashboard</h1>
 
@@ -75,15 +23,12 @@
     <div class="stat-card" onclick="location.href='internals.html'">
       <span id="internalCount">0</span><br>Internally Funded
     </div>
-
     <div class="stat-card" onclick="location.href='externals.html'">
       <span id="externalCount">0</span><br>Externally Funded
     </div>
-
     <div class="stat-card" onclick="location.href='publications.html'">
       <span id="pubCount">0</span><br>Publications
     </div>
-
     <div class="stat-card" onclick="location.href='conferences.html'">
       <span id="confCount">0</span><br>Conferences
     </div>
@@ -91,12 +36,9 @@
 </section>
 
 <div class="main-grid">
-
   <div class="left-panel">
     <h2>Research Outputs by Year</h2>
-    <div class="chart-container">
-      <canvas id="chartCombined"></canvas>
-    </div>
+    <canvas id="chartCombined"></canvas>
   </div>
 
   <div class="right-panel">
@@ -106,43 +48,24 @@
       <tbody></tbody>
     </table>
   </div>
-
 </div>
 
-<!-- JS Libraries -->
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
+<!-- JS Libraries Loader -->
+<script src="js/libs.js"></script>
+<!-- CSV Sources -->
 <script src="js/sources.js"></script>
+<!-- Utility scripts -->
+<script src="js/scripts.js"></script>
 
 <script>
-// Load Faculty Table
-function loadFacultyTable() {
-  Papa.parse(CSV_SOURCES.faculty, {
-    download: true,
-    header: true,
-    complete: function(results) {
-      const data = results.data.filter(r => Object.values(r).some(v => v));
-      if (data.length === 0) return;
+$(document).ready(function() {
+  // Load navigation
+  $("#navContainer").load("nav.html");
 
-      const table = $("#facultyTable");
-      const headers = Object.keys(data[0]);
+  // Faculty table
+  loadCSV(CSV_SOURCES.faculty, 'facultyTable');
 
-      table.find("thead").html("<tr>" + headers.map(h => `<th>${h}</th>`).join("") + "</tr>");
-      let tbody = "";
-      data.forEach(row => {
-        tbody += "<tr>" + headers.map(h => `<td>${row[h] || ""}</td>`).join("") + "</tr>";
-      });
-      table.find("tbody").html(tbody);
-      table.DataTable({scrollX: true, pageLength: 10});
-    }
-  });
-}
-
-// Load Yearly Stats + Chart
-function loadYearlyStats() {
+  // Yearly stats + chart
   Papa.parse(CSV_SOURCES.yearly, {
     download: true,
     header: true,
@@ -157,18 +80,19 @@ function loadYearlyStats() {
       const map = {};
       rows.forEach(r => map[r["Category"]] = r);
 
-      document.getElementById("internalCount").textContent = map["Internally Funded"]?.["Total"] || 0;
-      document.getElementById("externalCount").textContent = map["Externally Funded"]?.["Total"] || 0;
-      document.getElementById("pubCount").textContent      = map["Publications"]?.["Total"] || 0;
-      document.getElementById("confCount").textContent     = map["Conferences"]?.["Total"] || 0;
+      // Update stat cards
+      $("#internalCount").text(map["Internally Funded"]?.["Total"] || 0);
+      $("#externalCount").text(map["Externally Funded"]?.["Total"] || 0);
+      $("#pubCount").text(map["Publications"]?.["Total"] || 0);
+      $("#confCount").text(map["Conferences"]?.["Total"] || 0);
 
+      // Chart
       const categories = ["Internally Funded","Externally Funded","Publications","Conferences"];
       const colors = ["#1f77b4","#ff7f0e","#2ca02c","#d62728"];
-
-      const datasets = categories.map((cat, i) => ({
+      const datasets = categories.map((cat,i)=>({
         label: cat,
         backgroundColor: colors[i],
-        data: years.map(y => parseInt(map[cat]?.[y] || 0))
+        data: years.map(y=>parseInt(map[cat]?.[y]||0))
       }));
 
       new Chart(document.getElementById("chartCombined"), {
@@ -182,11 +106,8 @@ function loadYearlyStats() {
       });
     }
   });
-}
-
-// Initialize
-loadFacultyTable();
-loadYearlyStats();
+});
 </script>
+
 </body>
 </html>
