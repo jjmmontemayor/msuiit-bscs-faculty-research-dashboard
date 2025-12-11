@@ -1,35 +1,69 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MSU-IIT CS Faculty Research and Creativity Dashboard</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MSU-IIT CS Faculty Research and Creativity Dashboard</title>
 
-<!-- DataTables CSS -->
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+  <!-- DataTables CSS -->
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
 
-<style>
-body { font-family: Arial, sans-serif; margin: 20px; background: #f7f7f7; }
-h1, h2, h3 { text-align: center; }
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background: #f7f7f7;
+    }
+    h1, h2, h3 { text-align: center; }
 
-/* STAT CARDS */
-.stats-grid { display: flex; justify-content: space-around; flex-wrap: wrap; margin-bottom: 30px; }
-.stat-card { background: #0054a6; color: white; padding: 20px; margin: 10px; border-radius: 8px; flex: 1 1 180px; text-align: center; cursor: pointer; transition: 0.2s; }
-.stat-card:hover { background: #003d7a; transform: scale(1.03); }
+    /* STAT CARDS */
+    .stats-grid {
+      display: flex;
+      justify-content: space-around;
+      flex-wrap: wrap;
+      margin-bottom: 30px;
+    }
+    .stat-card {
+      background: #0054a6;
+      color: white;
+      padding: 20px;
+      margin: 10px;
+      border-radius: 8px;
+      flex: 1 1 180px;
+      text-align: center;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .stat-card:hover {
+      background: #003d7a;
+      transform: scale(1.03);
+    }
 
-/* 2-COLUMN LAYOUT */
-.main-grid { display: flex; flex-direction: row; justify-content: space-between; align-items: flex-start; gap: 20px; padding: 10px 20px; }
-.left-panel, .right-panel { background: white; padding: 20px; border-radius: 10px; }
-.left-panel { flex: 1; max-width: 48%; min-width: 350px; }
-.right-panel { flex: 1; max-width: 48%; min-width: 350px; }
-.chart-container { width: 100%; }
-table.dataTable { width: 100%; }
+    /* 2-COLUMN LAYOUT */
+    .main-grid {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 20px;
+      padding: 10px 20px;
+    }
+    .left-panel, .right-panel {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+    }
+    .left-panel { flex: 1; max-width: 48%; min-width: 350px; }
+    .right-panel { flex: 1; max-width: 48%; min-width: 350px; }
 
-@media(max-width: 900px) {
-  .main-grid { flex-direction: column; }
-  .left-panel, .right-panel { max-width: 100%; }
-}
-</style>
+    .chart-container { width: 100%; }
+    table.dataTable { width: 100%; }
+
+    @media(max-width: 900px) {
+      .main-grid { flex-direction: column; }
+      .left-panel, .right-panel { max-width: 100%; }
+    }
+  </style>
 </head>
 <body>
 
@@ -41,12 +75,15 @@ table.dataTable { width: 100%; }
     <div class="stat-card" onclick="location.href='internals.html'">
       <span id="internalCount">0</span><br>Internally Funded
     </div>
+
     <div class="stat-card" onclick="location.href='externals.html'">
       <span id="externalCount">0</span><br>Externally Funded
     </div>
+
     <div class="stat-card" onclick="location.href='publications.html'">
       <span id="pubCount">0</span><br>Publications
     </div>
+
     <div class="stat-card" onclick="location.href='conferences.html'">
       <span id="confCount">0</span><br>Conferences
     </div>
@@ -54,9 +91,12 @@ table.dataTable { width: 100%; }
 </section>
 
 <div class="main-grid">
+
   <div class="left-panel">
     <h2>Research Outputs by Year</h2>
-    <canvas id="chartCombined"></canvas>
+    <div class="chart-container">
+      <canvas id="chartCombined"></canvas>
+    </div>
   </div>
 
   <div class="right-panel">
@@ -66,15 +106,16 @@ table.dataTable { width: 100%; }
       <tbody></tbody>
     </table>
   </div>
+
 </div>
 
-<!-- JS Libraries -->
+<!-- JS Loader -->
 <script src="js/libs.js"></script>
 <script src="js/sources.js"></script>
 
+<!-- Main script -->
 <script>
-$(document).ready(function() {
-
+function initDashboard() {
   // Load Faculty Table
   function loadFacultyTable() {
     Papa.parse(CSV_SOURCES.faculty, {
@@ -93,7 +134,7 @@ $(document).ready(function() {
           tbody += "<tr>" + headers.map(h => `<td>${row[h] || ""}</td>`).join("") + "</tr>";
         });
         table.find("tbody").html(tbody);
-        table.DataTable({ scrollX: true, pageLength: 10 });
+        table.DataTable({scrollX: true, pageLength: 10});
       }
     });
   }
@@ -114,13 +155,14 @@ $(document).ready(function() {
         const map = {};
         rows.forEach(r => map[r["Category"]] = r);
 
-        $("#internalCount").text(map["Internally Funded"]?.["Total"] || 0);
-        $("#externalCount").text(map["Externally Funded"]?.["Total"] || 0);
-        $("#pubCount").text(map["Publications"]?.["Total"] || 0);
-        $("#confCount").text(map["Conferences"]?.["Total"] || 0);
+        document.getElementById("internalCount").textContent = map["Internally Funded"]?.["Total"] || 0;
+        document.getElementById("externalCount").textContent = map["Externally Funded"]?.["Total"] || 0;
+        document.getElementById("pubCount").textContent      = map["Publications"]?.["Total"] || 0;
+        document.getElementById("confCount").textContent     = map["Conferences"]?.["Total"] || 0;
 
         const categories = ["Internally Funded","Externally Funded","Publications","Conferences"];
         const colors = ["#1f77b4","#ff7f0e","#2ca02c","#d62728"];
+
         const datasets = categories.map((cat, i) => ({
           label: cat,
           backgroundColor: colors[i],
@@ -140,11 +182,13 @@ $(document).ready(function() {
     });
   }
 
-  // Initialize
+  // Initialize all
   loadFacultyTable();
   loadYearlyStats();
+}
 
-});
+// Wait for libs.js to finish loading dependencies
+window.addEventListener("load", initDashboard);
 </script>
 </body>
 </html>
