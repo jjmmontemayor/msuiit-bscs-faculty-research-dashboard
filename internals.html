@@ -7,22 +7,80 @@
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
 <link rel="stylesheet" href="css/style.css">
 
-<!-- JS Libraries -->
-<script src="js/libs.js"></script>
-<script src="js/sources.js"></script>
+<style>
+/* Two-panel layout */
+.main-grid {
+  display: flex;
+  gap: 20px;
+  padding: 20px;
+  flex-wrap: wrap;
+}
+
+.left-panel, .right-panel {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+}
+
+.left-panel {
+  flex: 1;
+  min-width: 300px;
+}
+
+.right-panel {
+  flex: 1;
+  min-width: 300px;
+}
+
+/* Chart container */
+.chart-container {
+  width: 100%;
+}
+
+/* Project detail panel hidden by default */
+#projectDetail {
+  display: none;
+}
+
+/* Responsive */
+@media(max-width: 900px) {
+  .main-grid { flex-direction: column; }
+}
+</style>
 </head>
 <body>
 
 <h1>Internally Funded Projects</h1>
 
-<div class="chart-container" style="width:90%; max-width:800px; margin: 20px auto;">
-  <canvas id="internalChart"></canvas>
+<div class="main-grid">
+  <!-- Left: Chart -->
+  <div class="left-panel">
+    <h2>Internally Funded Projects per Year</h2>
+    <div class="chart-container">
+      <canvas id="internalChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Right: Table / Details -->
+  <div class="right-panel">
+    <div id="tableContainer">
+      <h2>Projects</h2>
+      <table id="internalTable" class="display" style="width:100%;">
+        <thead><tr></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div id="projectDetail">
+      <button id="backBtn">← Back to Projects</button>
+      <h2>Project Details</h2>
+      <div id="detailContent"></div>
+    </div>
+  </div>
 </div>
 
-<table id="internalTable" class="display" style="width:90%; margin: 20px auto;">
-  <thead><tr></tr></thead>
-  <tbody></tbody>
-</table>
+<script src="js/libs.js"></script>
+<script src="js/sources.js"></script>
 
 <script>
 window.addEventListener('load', () => {
@@ -34,29 +92,29 @@ window.addEventListener('load', () => {
       const rawData = results.data.filter(r => Object.values(r).some(v => v));
       if (!rawData.length) return;
 
-      // Determine which columns to display (A, C, D, E)
       const allHeaders = Object.keys(rawData[0]);
-      const displayCols = [allHeaders[0], allHeaders[2], allHeaders[3], allHeaders[4]];
+      const tableCols = [allHeaders[0], allHeaders[1], allHeaders[2]]; // A, B, C
 
       // Build table
       const $table = $("#internalTable");
-      $table.find("thead").html("<tr>" + displayCols.map(h => `<th>${h}</th>`).join("") + "</tr>");
+      $table.find("thead").html("<tr>" + tableCols.map(h => `<th>${h}</th>`).join("") + "</tr>");
       let tbody = "";
-      rawData.forEach(row => {
-        tbody += "<tr>" + displayCols.map(h => `<td>${row[h] || ""}</td>`).join("") + "</tr>";
+      rawData.forEach((row, idx) => {
+        tbody += "<tr data-index='"+idx+"'>" + tableCols.map((h,i) => {
+          if(i === 1) return `<td class="project-title">${row[h] || ""}</td>`; // clickable column B
+          return `<td>${row[h] || ""}</td>`;
+        }).join("") + "</tr>";
       });
       $table.find("tbody").html(tbody);
       $table.DataTable({scrollX: true, pageLength: 10});
 
-      // Chart: count of projects per year
-      // Adjust the year column index if needed
-      const yearCol = allHeaders[2]; // Assuming column C is the Year
+      // Chart: count of projects per year (column A)
+      const yearCol = allHeaders[0];
       const countPerYear = {};
-
       rawData.forEach(r => {
         const year = r[yearCol];
-        if (!year) return;
-        if (!countPerYear[year]) countPerYear[year] = 0;
+        if(!year) return;
+        if(!countPerYear[year]) countPerYear[year] = 0;
         countPerYear[year]++;
       });
 
@@ -76,12 +134,34 @@ window.addEventListener('load', () => {
         options: {
           responsive: true,
           plugins: { legend: { position: "top" } },
-          scales: { y: { beginAtZero: true, precision: 0 } }
+          scales: { y: { beginAtZero: true, precision:0 } }
         }
+      });
+
+      // Click on project title
+      $(document).on('click', '.project-title', function() {
+        const rowIdx = $(this).closest('tr').data('index');
+        const project = rawData[rowIdx];
+        $('#tableContainer').hide();
+        $('#projectDetail').show();
+
+        let contentHtml = "<ul>";
+        allHeaders.forEach(h => {
+          contentHtml += `<li><strong>${h}:</strong> ${project[h] || ''}</li>`;
+        });
+        contentHtml += "</ul>";
+        $('#detailContent').html(contentHtml);
+      });
+
+      // Back button
+      $('#backBtn').on('click', () => {
+        $('#projectDetail').hide();
+        $('#tableContainer').show();
       });
     }
   });
 });
 </script>
+
 </body>
 </html>
