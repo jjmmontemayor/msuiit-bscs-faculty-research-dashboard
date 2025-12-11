@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Internally Funded Projects</title>
+
+<!-- DataTables CSS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+<!-- Custom styles -->
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<h1>Internally Funded Projects</h1>
+
+<div id="chartContainer">
+  <canvas id="internalChart"></canvas>
+</div>
+
+<table id="internalTable" class="display">
+  <thead></thead>
+  <tbody></tbody>
+</table>
+
+<!-- Load common JS libraries -->
+<script src="js/libs.js"></script>
+<!-- CSV sources -->
+<script src="js/sources.js"></script>
+
+<script>
+// Ensure code runs after libraries are loaded
+window.addEventListener('load', () => {
+  Papa.parse(CSV_SOURCES.internals, {
+    download: true,
+    header: true,
+    skipEmptyLines: true,
+    complete: function(results) {
+      const rawData = results.data.filter(r => Object.values(r).some(v => v));
+      if (!rawData.length) return;
+
+      const allHeaders = Object.keys(rawData[0]);
+      const displayCols = [allHeaders[0], allHeaders[2], allHeaders[3], allHeaders[4]]; // A, C, D, E
+
+      // Build table
+      const $table = $("#internalTable");
+      $table.find("thead").html("<tr>" + displayCols.map(h => `<th>${h}</th>`).join("") + "</tr>");
+      let tbody = "";
+      rawData.forEach(row => {
+        tbody += "<tr>" + displayCols.map(h => `<td>${row[h] || ""}</td>`).join("") + "</tr>";
+      });
+      $table.find("tbody").html(tbody);
+
+      $table.DataTable({scrollX: true, pageLength: 10});
+
+      // Chart data
+      const yearCol = allHeaders[2]; // column D assumed as Year
+      const countPerYear = {};
+      rawData.forEach(r => {
+        const year = r[yearCol];
+        if (!countPerYear[year]) countPerYear[year] = 0;
+        countPerYear[year]++;
+      });
+
+      const years = Object.keys(countPerYear).sort();
+      const counts = years.map(y => countPerYear[y]);
+
+      new Chart(document.getElementById("internalChart"), {
+        type: "bar",
+        data: {
+          labels: years,
+          datasets: [{
+            label: "Internally Funded Projects",
+            data: counts,
+            backgroundColor: "#1f77b4"
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { position: "top" } },
+          scales: { y: { beginAtZero: true, precision: 0 } }
+        }
+      });
+    }
+  });
+});
+</script>
+</body>
+</html>
