@@ -1,3 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Publications</title>
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+<link rel="stylesheet" href="css/style.css">
+
+<style>
+/* Top-left home icon */
+#homeBtn {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  font-size: 24px;
+  cursor: pointer;
+  color: #0054a6;
+  z-index: 1000;
+}
+
+/* Two-panel layout */
+.main-grid {
+  display: flex;
+  gap: 20px;
+  padding: 60px 20px 20px 20px; /* leave space for home button */
+  flex-wrap: wrap;
+}
+
+.left-panel, .right-panel {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+}
+
+.left-panel {
+  flex: 1;
+  min-width: 300px;
+}
+
+.right-panel {
+  flex: 1;
+  min-width: 300px;
+}
+
+/* Chart container */
+.chart-container {
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+/* Details container */
+#projectDetail {
+  display: none;
+}
+
+/* Highlight row */
+.clickable-row:hover {
+  background-color: #e6f0ff;
+  cursor: pointer;
+}
+.highlighted {
+  background-color: #cce0ff !important;
+}
+
+/* Responsive */
+@media(max-width: 900px) {
+  .main-grid { flex-direction: column; }
+}
+</style>
+</head>
+<body>
+
+<!-- Home Icon -->
+<div id="homeBtn">🏠</div>
+
+<h1>Publications</h1>
+
+<div class="main-grid">
+  <!-- Left Panel: Project List -->
+  <div class="left-panel">
+    <h2>Publications</h2>
+    <table id="publicationsTable" class="display" style="width:100%;">
+      <thead><tr></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- Right Panel: Chart + Details -->
+  <div class="right-panel">
+    <div id="chartContainer">
+      <h2>Publications per Year</h2>
+      <div class="chart-container">
+        <canvas id="chartPublications"></canvas>
+      </div>
+    </div>
+
+    <div id="projectDetail">
+      <h2>Publication Details</h2>
+      <div id="detailContent"></div>
+    </div>
+  </div>
+</div>
+
+<script src="js/libs.js"></script>
+<script src="js/sources.js"></script>
 <script>
 window.addEventListener('load', () => {
   Papa.parse(CSV_SOURCES.publications, {
@@ -9,7 +115,7 @@ window.addEventListener('load', () => {
       if (!rawData.length) return;
 
       const allHeaders = Object.keys(rawData[0]);
-      const tableCols = [allHeaders[0], allHeaders[1]]; // A, B
+      const tableCols = [allHeaders[0], allHeaders[1]]; // columns A & B
 
       // Build table
       const $table = $("#publicationsTable");
@@ -17,7 +123,7 @@ window.addEventListener('load', () => {
       let tbody = "";
       rawData.forEach((row, idx) => {
         tbody += "<tr class='clickable-row' data-index='"+idx+"'>" +
-                  tableCols.map(h => `<td>${row[h] || ""}</td>`).join("") +
+                  tableCols.map(h => `<td>${row[h]||""}</td>`).join("") +
                  "</tr>";
       });
       $table.find("tbody").html(tbody);
@@ -36,7 +142,7 @@ window.addEventListener('load', () => {
       const years = Object.keys(countPerYear).sort();
       const counts = years.map(y => countPerYear[y]);
 
-      const chartPublications = new Chart(document.getElementById("chartPublications"), {
+      new Chart(document.getElementById("chartPublications"), {
         type: "bar",
         data: { labels: years, datasets:[{label:"Publications", data:counts, backgroundColor:"#2ca02c"}]},
         options: {
@@ -46,7 +152,7 @@ window.addEventListener('load', () => {
         }
       });
 
-      // Row click for details
+      // Row click: show details
       $(document).on('click','.clickable-row', function(){
         const rowIdx = $(this).data('index');
         const project = rawData[rowIdx];
@@ -54,7 +160,7 @@ window.addEventListener('load', () => {
         $('.clickable-row').removeClass('highlighted');
         $(this).addClass('highlighted');
 
-        // Image preview (top of details)
+        // Image preview for column B if URL
         const linkVal = project[allHeaders[1]] || '';
         let imgHtml = '';
         if(linkVal && linkVal.startsWith('http')) {
@@ -64,8 +170,8 @@ window.addEventListener('load', () => {
         }
 
         let contentHtml = "<ul>";
-        allHeaders.forEach(h=>{
-          contentHtml += `<li><strong>${h}:</strong> ${project[h]||''}</li>`;
+        tableCols.forEach(h => {
+          contentHtml += `<li><strong>${h}:</strong> ${project[h] || ''}</li>`;
         });
         contentHtml += "</ul>";
 
@@ -80,3 +186,5 @@ window.addEventListener('load', () => {
   });
 });
 </script>
+</body>
+</html>
