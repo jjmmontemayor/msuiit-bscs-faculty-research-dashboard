@@ -1,110 +1,207 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Index – Statistics & Faculty</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MSU-IIT CS Faculty Research and Creativity Dashboard</title>
+
+  <!-- DataTables CSS -->
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    h1 { margin-bottom: 20px; }
-    .container { display: flex; gap: 20px; align-items: flex-start; }
-    .chart-box { flex: 1; }
-    .table-box { flex: 1; max-height: 90vh; overflow-y: auto; border: 1px solid #ddd; padding: 10px; }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
-    th { background: #f0f0f0; position: sticky; top: 0; }
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background: #f7f7f7;
+    }
+    h1, h2, h3 {
+      text-align: center;
+    }
+
+    /* STAT CARDS */
+    .stats-grid {
+      display: flex;
+      justify-content: space-around;
+      flex-wrap: wrap;
+      margin-bottom: 30px;
+    }
+    .stat-card {
+      background: #0054a6;
+      color: white;
+      padding: 20px;
+      margin: 10px;
+      border-radius: 8px;
+      flex: 1 1 180px;
+      text-align: center;
+    }
+
+    /* NEW 2-COLUMN LAYOUT */
+    .main-grid {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 20px;
+      padding: 10px 20px;
+    }
+
+    .left-panel, .right-panel {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+    }
+
+    .left-panel {
+      flex: 1;
+      max-width: 48%;
+      min-width: 350px;
+    }
+
+    .right-panel {
+      flex: 1;
+      max-width: 48%;
+      min-width: 350px;
+    }
+
+    .chart-container {
+      width: 100%;
+    }
+
+    table.dataTable {
+      width: 100%;
+    }
+
+    /* Responsive for phones */
+    @media(max-width: 900px) {
+      .main-grid {
+        flex-direction: column;
+      }
+      .left-panel, .right-panel {
+        max-width: 100%;
+      }
+    }
   </style>
 </head>
 <body>
-  <h1>Department Summary & Faculty</h1>
 
-  <div class="container">
-    <!-- CHART SECTION -->
-    <div class="chart-box">
-      <canvas id="yearlyChart"></canvas>
-    </div>
+<h1>CS Research Dashboard</h1>
 
-    <!-- FACULTY TABLE -->
-    <div class="table-box">
-      <h2>Faculty Members</h2>
-      <table id="facultyTable"></table>
+<section id="stats">
+  <h2>Yearly Research Statistics</h2>
+  <div class="stats-grid">
+    <div class="stat-card"><span id="internalCount">0</span><br>Internally Funded</div>
+    <div class="stat-card"><span id="externalCount">0</span><br>Externally Funded</div>
+    <div class="stat-card"><span id="pubCount">0</span><br>Publications</div>
+    <div class="stat-card"><span id="confCount">0</span><br>Conferences</div>
+  </div>
+</section>
+
+<!-- 🔥 NEW SIDE-BY-SIDE LAYOUT -->
+<div class="main-grid">
+
+  <!-- LEFT: CHART -->
+  <div class="left-panel">
+    <h2>Research Outputs by Year</h2>
+    <div class="chart-container">
+      <canvas id="chartCombined"></canvas>
     </div>
   </div>
 
-  <script>
-    const yearlyCSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR-jDPbQ-ZCkBK8_1igyWkHd3ynUPHh5l8eI6KmD-qhpu9ZeYTqYV11X7NQ82NbYyEwvSiTzGVD6-3L/pub?gid=0&single=true&output=csv";
-    const facultyCSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR-jDPbQ-ZCkBK8_1igyWkHd3ynUPHh5l8eI6KmD-qhpu9ZeYTqYV11X7NQ82NbYyEwvSiTzGVD6-3L/pub?gid=5470856&single=true&output=csv";
+  <!-- RIGHT: FACULTY TABLE -->
+  <div class="right-panel">
+    <h2>Faculty Members</h2>
+    <table id="facultyTable" class="display">
+      <thead></thead>
+      <tbody></tbody>
+    </table>
+  </div>
 
-    async function parseCSV(url) {
-      const response = await fetch(url);
-      const text = await response.text();
-      return text.split("\n").map(row => row.split(","));
-    }
+</div>
 
-    async function loadYearly() {
-      const rows = await parseCSV(yearlyCSV);
-      const header = rows[0];
-      const data = rows.slice(1);
+<!-- JS Libraries -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-      const labels = header.slice(2); // years
+<script>
+// CSV Sources
+const facultyCSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR-jDPbQ-ZCkBK8_1igyWkHd3ynUPHh5l8eI6KmD-qhpu9ZeYTqYV11X7NQ82NbYyEwvSiTzGVD6-3L/pub?gid=5470856&single=true&output=csv";
+const yearlyCSV   = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR-jDPbQ-ZCkBK8_1igyWkHd3ynUPHh5l8eI6KmD-qhpu9ZeYTqYV11X7NQ82NbYyEwvSiTzGVD6-3L/pub?gid=743932525&single=true&output=csv";
 
-      const categoriesToShow = ["Internally Funded", "Externally Funded", "Publications", "Conferences"];
+// Load Faculty Table
+function loadFacultyTable() {
+  Papa.parse(facultyCSV, {
+    download: true,
+    header: true,
+    complete: function(results) {
+      const data = results.data.filter(r => Object.values(r).some(v => v));
+      if (data.length === 0) return;
 
-      const datasets = categoriesToShow.map((category, index) => {
-        const row = data.find(r => r[0] === category);
-        return {
-          label: category,
-          data: row.slice(2).map(Number),
-          backgroundColor: `rgba(${50 + index * 50}, 99, 200, 0.7)`
-        };
+      const table = $("#facultyTable");
+      const headers = Object.keys(data[0]);
+
+      table.find("thead").html("<tr>" + headers.map(h => `<th>${h}</th>`).join("") + "</tr>");
+      let tbody = "";
+      data.forEach(row => {
+        tbody += "<tr>" + headers.map(h => `<td>${row[h] || ""}</td>`).join("") + "</tr>";
       });
+      table.find("tbody").html(tbody);
+      table.DataTable({scrollX: true, pageLength: 10});
+    }
+  });
+}
 
-      new Chart(document.getElementById('yearlyChart'), {
-        type: 'bar',
-        data: { labels, datasets },
+// Load Yearly Stats + Chart
+function loadYearlyStats() {
+  Papa.parse(yearlyCSV, {
+    download: true,
+    header: true,
+    skipEmptyLines: true,
+    complete: function(results) {
+      const rows = results.data;
+      if (!rows.length) return;
+
+      // Extract year columns
+      const sample = rows[0];
+      const years = Object.keys(sample).filter(k => /^\d{4}$/.test(k));
+
+      // Map categories
+      const map = {};
+      rows.forEach(r => map[r["Category"]] = r);
+
+      // Statistic Cards
+      document.getElementById("internalCount").textContent = map["Internally Funded"]?.["Total"] || 0;
+      document.getElementById("externalCount").textContent = map["Externally Funded"]?.["Total"] || 0;
+      document.getElementById("pubCount").textContent      = map["Publications"]?.["Total"] || 0;
+      document.getElementById("confCount").textContent     = map["Conferences"]?.["Total"] || 0;
+
+      // Chart datasets
+      const categories = ["Internally Funded","Externally Funded","Publications","Conferences"];
+      const colors = ["#1f77b4","#ff7f0e","#2ca02c","#d62728"];
+
+      const datasets = categories.map((cat, i) => ({
+        label: cat,
+        backgroundColor: colors[i],
+        data: years.map(y => parseInt(map[cat]?.[y] || 0))
+      }));
+
+      new Chart(document.getElementById("chartCombined"), {
+        type: "bar",
+        data: { labels: years, datasets: datasets },
         options: {
           responsive: true,
-          plugins: {
-            legend: { position: 'top' }
-          },
-          scales: { x: { stacked: false }, y: { beginAtZero: true } }
+          plugins: { legend: { position: "top" } },
+          scales: { y: { beginAtZero: true } }
         }
       });
     }
+  });
+}
 
-    async function loadFaculty() {
-      const rows = await parseCSV(facultyCSV);
-      const table = document.getElementById("facultyTable");
-
-      table.innerHTML = "";
-      const thead = document.createElement("thead");
-      const tbody = document.createElement("tbody");
-
-      const headerRow = document.createElement("tr");
-      rows[0].forEach(col => {
-        const th = document.createElement("th");
-        th.textContent = col;
-        headerRow.appendChild(th);
-      });
-      thead.appendChild(headerRow);
-
-      rows.slice(1).forEach(row => {
-        const tr = document.createElement("tr");
-        row.forEach(col => {
-          const td = document.createElement("td");
-          td.textContent = col;
-          tr.appendChild(td);
-        });
-        tbody.appendChild(tr);
-      });
-
-      table.appendChild(thead);
-      table.appendChild(tbody);
-    }
-
-    loadYearly();
-    loadFaculty();
-  </script>
+// Initialize
+loadFacultyTable();
+loadYearlyStats();
+</script>
 </body>
 </html>
