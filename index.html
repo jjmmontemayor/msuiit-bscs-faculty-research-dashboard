@@ -14,9 +14,7 @@
       margin: 20px;
       background: #f7f7f7;
     }
-    h1, h2, h3 {
-      text-align: center;
-    }
+    h1, h2, h3 { text-align: center; }
 
     /* STAT CARDS */
     .stats-grid {
@@ -41,7 +39,7 @@
       transform: scale(1.03);
     }
 
-    /* NEW 2-COLUMN LAYOUT */
+    /* 2-COLUMN LAYOUT */
     .main-grid {
       display: flex;
       flex-direction: row;
@@ -50,41 +48,20 @@
       gap: 20px;
       padding: 10px 20px;
     }
-
     .left-panel, .right-panel {
       background: white;
       padding: 20px;
       border-radius: 10px;
     }
+    .left-panel { flex: 1; max-width: 48%; min-width: 350px; }
+    .right-panel { flex: 1; max-width: 48%; min-width: 350px; }
 
-    .left-panel {
-      flex: 1;
-      max-width: 48%;
-      min-width: 350px;
-    }
+    .chart-container { width: 100%; }
+    table.dataTable { width: 100%; }
 
-    .right-panel {
-      flex: 1;
-      max-width: 48%;
-      min-width: 350px;
-    }
-
-    .chart-container {
-      width: 100%;
-    }
-
-    table.dataTable {
-      width: 100%;
-    }
-
-    /* Responsive for phones */
     @media(max-width: 900px) {
-      .main-grid {
-        flex-direction: column;
-      }
-      .left-panel, .right-panel {
-        max-width: 100%;
-      }
+      .main-grid { flex-direction: column; }
+      .left-panel, .right-panel { max-width: 100%; }
     }
   </style>
 </head>
@@ -115,7 +92,6 @@
 
 <div class="main-grid">
 
-  <!-- LEFT: CHART -->
   <div class="left-panel">
     <h2>Research Outputs by Year</h2>
     <div class="chart-container">
@@ -123,7 +99,6 @@
     </div>
   </div>
 
-  <!-- RIGHT: FACULTY TABLE -->
   <div class="right-panel">
     <h2>Faculty Members</h2>
     <table id="facultyTable" class="display">
@@ -140,14 +115,13 @@
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-<script>
-// CSV Sources
-const facultyCSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR-jDPbQ-ZCkBK8_1igyWkHd3ynUPHh5l8eI6KmD-qhpu9ZeYTqYV11X7NQ82NbYyEwvSiTzGVD6-3L/pub?gid=5470856&single=true&output=csv";
-const yearlyCSV   = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR-jDPbQ-ZCkBK8_1igyWkHd3ynUPHh5l8eI6KmD-qhpu9ZeYTqYV11X7NQ82NbYyEwvSiTzGVD6-3L/pub?gid=743932525&single=true&output=csv";
+<!-- 🌟 Your shared CSV source file -->
+<script src="sources.js"></script>
 
+<script>
 // Load Faculty Table
 function loadFacultyTable() {
-  Papa.parse(facultyCSV, {
+  Papa.parse(CSV_SOURCES.faculty, {
     download: true,
     header: true,
     complete: function(results) {
@@ -170,7 +144,7 @@ function loadFacultyTable() {
 
 // Load Yearly Stats + Chart
 function loadYearlyStats() {
-  Papa.parse(yearlyCSV, {
+  Papa.parse(CSV_SOURCES.yearly, {
     download: true,
     header: true,
     skipEmptyLines: true,
