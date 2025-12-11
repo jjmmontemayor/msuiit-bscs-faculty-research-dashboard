@@ -33,6 +33,12 @@
       border-radius: 8px;
       flex: 1 1 180px;
       text-align: center;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .stat-card:hover {
+      background: #003d7a;
+      transform: scale(1.03);
     }
 
     /* NEW 2-COLUMN LAYOUT */
@@ -89,10 +95,21 @@
 <section id="stats">
   <h2>Yearly Research Statistics</h2>
   <div class="stats-grid">
-    <div class="stat-card"><span id="internalCount">0</span><br>Internally Funded</div>
-    <div class="stat-card"><span id="externalCount">0</span><br>Externally Funded</div>
-    <div class="stat-card"><span id="pubCount">0</span><br>Publications</div>
-    <div class="stat-card"><span id="confCount">0</span><br>Conferences</div>
+    <div class="stat-card" onclick="location.href='internals.html'">
+      <span id="internalCount">0</span><br>Internally Funded
+    </div>
+
+    <div class="stat-card" onclick="location.href='externals.html'">
+      <span id="externalCount">0</span><br>Externally Funded
+    </div>
+
+    <div class="stat-card" onclick="location.href='publications.html'">
+      <span id="pubCount">0</span><br>Publications
+    </div>
+
+    <div class="stat-card" onclick="location.href='conferences.html'">
+      <span id="confCount">0</span><br>Conferences
+    </div>
   </div>
 </section>
 
@@ -162,21 +179,17 @@ function loadYearlyStats() {
       const rows = results.data;
       if (!rows.length) return;
 
-      // Extract year columns
       const sample = rows[0];
       const years = Object.keys(sample).filter(k => /^\d{4}$/.test(k));
 
-      // Map categories
       const map = {};
       rows.forEach(r => map[r["Category"]] = r);
 
-      // Statistic Cards
       document.getElementById("internalCount").textContent = map["Internally Funded"]?.["Total"] || 0;
       document.getElementById("externalCount").textContent = map["Externally Funded"]?.["Total"] || 0;
       document.getElementById("pubCount").textContent      = map["Publications"]?.["Total"] || 0;
       document.getElementById("confCount").textContent     = map["Conferences"]?.["Total"] || 0;
 
-      // Chart datasets
       const categories = ["Internally Funded","Externally Funded","Publications","Conferences"];
       const colors = ["#1f77b4","#ff7f0e","#2ca02c","#d62728"];
 
@@ -201,7 +214,4 @@ function loadYearlyStats() {
 
 // Initialize
 loadFacultyTable();
-loadYearlyStats();
-</script>
-</body>
-</html>
+loadYearl
