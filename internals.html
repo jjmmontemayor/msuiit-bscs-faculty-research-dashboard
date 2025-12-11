@@ -1,35 +1,4 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Internally Funded Projects</title>
-
-<!-- DataTables CSS -->
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
-<!-- Custom styles -->
-<link rel="stylesheet" href="css/style.css">
-</head>
-<body>
-
-<h1>Internally Funded Projects</h1>
-
-<div id="chartContainer">
-  <canvas id="internalChart"></canvas>
-</div>
-
-<table id="internalTable" class="display">
-  <thead></thead>
-  <tbody></tbody>
-</table>
-
-<!-- Load common JS libraries -->
-<script src="js/libs.js"></script>
-<!-- CSV sources -->
-<script src="js/sources.js"></script>
-
 <script>
-// Ensure code runs after libraries are loaded
 window.addEventListener('load', () => {
   Papa.parse(CSV_SOURCES.internals, {
     download: true,
@@ -53,11 +22,14 @@ window.addEventListener('load', () => {
 
       $table.DataTable({scrollX: true, pageLength: 10});
 
-      // Chart data
-      const yearCol = allHeaders[2]; // column D assumed as Year
+      // --- Chart: count per year ---
+      // Find which column corresponds to Year
+      const yearCol = allHeaders[2]; // assuming column C or adjust accordingly
       const countPerYear = {};
+
       rawData.forEach(r => {
         const year = r[yearCol];
+        if (!year) return;
         if (!countPerYear[year]) countPerYear[year] = 0;
         countPerYear[year]++;
       });
@@ -85,5 +57,3 @@ window.addEventListener('load', () => {
   });
 });
 </script>
-</body>
-</html>
