@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CS Research Dashboard</title>
 
   <!-- DataTables CSS -->
@@ -12,17 +12,27 @@
     body { font-family: Arial, sans-serif; margin: 20px; background: #f7f7f7; }
     h1, h2, h3 { text-align: center; }
     .stats-grid { display: flex; justify-content: space-around; flex-wrap: wrap; margin-bottom: 30px; }
-    .stat-card { background: #0054a6; color: white; padding: 20px; margin: 10px; border-radius: 8px; flex: 1 1 180px; text-align: center; }
+    .stat-card {
+      background: #0054a6; color: white;
+      padding: 20px; margin: 10px;
+      border-radius: 8px; flex: 1 1 180px;
+      text-align: center; font-size: 18px;
+    }
     .chart-container { width: 90%; margin: 30px auto; }
     table.dataTable { background: white; width: 90%; margin: 20px auto; }
   </style>
 </head>
+
 <body>
 
 <h1>CS Research Dashboard</h1>
 
+<!-- =======================
+       STATISTICS SECTION
+======================= -->
 <section id="stats">
   <h2>Research Statistics</h2>
+
   <div class="stats-grid">
     <div class="stat-card"><span id="internalCount">0</span><br>Internally Funded</div>
     <div class="stat-card"><span id="externalCount">0</span><br>Externally Funded</div>
@@ -36,78 +46,110 @@
   </div>
 </section>
 
+<!-- =======================
+       FACULTY TABLE
+======================= -->
 <section>
   <h2>Faculty Members</h2>
-  <table id="facultyTable" class="display">
+
+  <table id="facultyTable" class="display" style="width:100%;">
     <thead></thead>
     <tbody></tbody>
   </table>
 </section>
 
-<!-- JS Libraries -->
+<!-- JS LIBRARIES -->
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
+// CSV SOURCES
 const facultyCSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR-jDPbQ-ZCkBK8_1igyWkHd3ynUPHh5l8eI6KmD-qhpu9ZeYTqYV11X7NQ82NbYyEwvSiTzGVD6-3L/pub?gid=5470856&single=true&output=csv";
 const yearlyCSV  = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR-jDPbQ-ZCkBK8_1igyWkHd3ynUPHh5l8eI6KmD-qhpu9ZeYTqYV11X7NQ82NbYyEwvSiTzGVD6-3L/pub?gid=743932525&single=true&output=csv";
 
-// Load Faculty Table
+// =========================
+// LOAD FACULTY TABLE
+// =========================
 function loadFacultyTable() {
   Papa.parse(facultyCSV, {
     download: true,
     header: true,
     complete: function(results) {
-      const data = results.data.filter(r => Object.values(r).some(v => v));
-      const table = $("#facultyTable");
+      const raw = results.data || [];
+      const data = raw.filter(r => Object.values(r).some(v => v && String(v).trim() !== ""));
+
+      const $table = $("#facultyTable");
+
+      // Destroy existing DataTable
+      if ($.fn.DataTable.isDataTable($table)) {
+        $table.DataTable().clear().destroy();
+        $table.empty().append("<thead></thead><tbody></tbody>");
+      }
+
+      if (!data.length) return;
+
       const headers = Object.keys(data[0]);
-      table.find("thead").html("<tr>" + headers.map(h => `<th>${h}</th>`).join("") + "</tr>");
-      let tbody = "";
-      data.forEach(row => {
-        tbody += "<tr>" + headers.map(h => `<td>${row[h] || ""}</td>`).join("") + "</tr>";
+
+      // DataTable render using columns (prevents misalignment)
+      const columns = headers.map(h => ({ title: h, data: h }));
+
+      $table.DataTable({
+        data: data,
+        columns: columns,
+        scrollX: true,
+        autoWidth: false,
+        pageLength: 10,
+        columnDefs: [{ targets: "_all", defaultContent: "" }]
       });
-      table.find("tbody").html(tbody);
-      table.DataTable({scrollX: true, pageLength: 10});
     }
   });
 }
 
-// Load Yearly Stats
+// =============================
+// LOAD YEARLY TOTALS + CHART
+// =============================
 function loadYearlyStats() {
   Papa.parse(yearlyCSV, {
     download: true,
     header: true,
     complete: function(results) {
-      const rows = results.data.filter(r => Object.values(r).some(v => v));
+      const rows = results.data.filter(r => r.Category);
 
-      // Totals from 'Total' column
-      const totalRow = {};
-      rows.forEach(r => totalRow[r['Category']] = parseInt(r['Total']) || 0);
+      // === Totals ===
+      const totals = {};
+      rows.forEach(r => totals[r.Category] = parseInt(r.Total) || 0);
 
-      document.getElementById("internalCount").textContent = totalRow['Internally Funded'] || 0;
-      document.getElementById("externalCount").textContent = totalRow['Externally Funded'] || 0;
-      document.getElementById("pubCount").textContent      = totalRow['Publications'] || 0;
-      document.getElementById("confCount").textContent     = totalRow['Conferences'] || 0;
+      document.getElementById("internalCount").textContent = totals["Internally Funded"] || 0;
+      document.getElementById("externalCount").textContent = totals["Externally Funded"] || 0;
+      document.getElementById("pubCount").textContent      = totals["Publications"] || 0;
+      document.getElementById("confCount").textContent     = totals["Conferences"] || 0;
 
-      // Chart per year
-      const categories = ['Internally Funded','Externally Funded','Publications','Conferences'];
-      const years = Object.keys(rows[0]).filter(c => c.match(/^\d{4}$/)); // 2018-2025
-      const datasets = categories.map((cat, idx) => {
+      // === Combined bar graph ===
+      const categories = ["Internally Funded","Externally Funded","Publications","Conferences"];
+
+      // Extract year columns (2018–2025)
+      const yearColumns = Object.keys(rows[0]).filter(c => /^\d{4}$/.test(c));
+
+      const datasets = categories.map((cat, i) => {
+        const row = rows.find(r => r.Category === cat);
         return {
           label: cat,
-          data: rows.find(r => r['Category']===cat) ? years.map(y => parseInt(rows.find(r => r['Category']===cat)[y] || 0)) : [],
-          backgroundColor: `hsl(${idx * 80}, 70%, 50%)`
+          data: yearColumns.map(y => parseInt(row[y] || 0)),
+          backgroundColor: `hsl(${i * 80}, 70%, 50%)`
         };
       });
 
-      new Chart(document.getElementById('chartCombined'), {
-        type: 'bar',
-        data: { labels: years, datasets: datasets },
+      new Chart(document.getElementById("chartCombined"), {
+        type: "bar",
+        data: {
+          labels: yearColumns,
+          datasets: datasets
+        },
         options: {
           responsive: true,
-          plugins: { legend: { position: 'top' } },
+          plugins: { legend: { position: "top" } },
           scales: { y: { beginAtZero: true } }
         }
       });
@@ -115,9 +157,13 @@ function loadYearlyStats() {
   });
 }
 
-// Initialize
+// =============================
+// INITIAL LOAD
+// =============================
 loadFacultyTable();
 loadYearlyStats();
+
 </script>
+
 </body>
 </html>
