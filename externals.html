@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Externally Funded Projects</title>
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+<link rel="stylesheet" href="css/style.css">
+
+<style>
+#homeBtn {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  background: none;
+  border: none;
+  font-size: 2em;
+  cursor: pointer;
+  z-index: 1000;
+}
+.main-grid {
+  display: flex;
+  gap: 20px;
+  padding: 20px;
+  flex-wrap: wrap;
+  margin-top: 60px;
+}
+.left-panel, .right-panel {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+}
+.left-panel { flex: 1; min-width: 350px; }
+.right-panel { flex: 1; min-width: 350px; }
+.chart-container { width: 100%; margin-bottom: 20px; }
+#projectDetail { display: none; margin-top: 20px; border-top: 1px solid #ccc; padding-top: 10px; }
+.highlighted { background-color: #d0e4ff !important; cursor: pointer; }
+@media(max-width: 900px) { .main-grid { flex-direction: column; } }
+</style>
+</head>
+<body>
+
+<button id="homeBtn" title="Back to Dashboard">🏠</button>
+
+<h1>Externally Funded Projects</h1>
+
+<div class="main-grid">
+  <!-- Left: Table -->
+  <div class="left-panel">
+    <h2>Projects</h2>
+    <table id="externalTable" class="display" style="width:100%;">
+      <thead><tr></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- Right: Chart + Details -->
+  <div class="right-panel">
+    <div id="chartContainer">
+      <h2>Externally Funded Projects per Year</h2>
+      <div class="chart-container">
+        <canvas id="chartExternal"></canvas>
+      </div>
+    </div>
+    <div id="projectDetail">
+      <h2>Project Details</h2>
+      <div id="detailContent"></div>
+    </div>
+  </div>
+</div>
+
+<script src="js/libs.js"></script>
+<script src="js/sources.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+window.addEventListener('load', () => {
+  Papa.parse(CSV_SOURCES.externals, {
+    download: true,
+    header: true,
+    skipEmptyLines: true,
+    complete: function(results) {
+      const rawData = results.data.filter(r => Object.values(r).some(v => v));
+      if (!rawData.length) return;
+
+      const allHeaders = Object.keys(rawData[0]);
+      const tableCols = [allHeaders[0], allHeaders[1], allHeaders[2]]; // A,B,C
+
+      // Build table
+      const $table = $("#externalTable");
+      $table.find("thead").html("<tr>" + tableCols.map(h => `<th>${h}</th>`).join("") + "</tr>");
+      let tbody = "";
+      rawData.forEach((row, idx) => {
+        tbody += "<tr class='clickable-row' data-index='"+idx+"'>" +
+                  tableCols.map(h => `<td>${row[h] || ""}</td>`).join("") +
+                 "</tr>";
+      });
+      $table.find("tbody").html(tbody);
+      const dataTable = $table.DataTable({scrollX:true, pageLength:10});
+
+      // Chart: count per year (column A)
+      const yearCol = allHeaders[0];
+      const countPerYear = {};
+      rawData.forEach(r => {
+        const year = r[yearCol];
+        if(!year) return;
+        if(!countPerYear[year]) countPerYear[year] = 0;
+        countPerYear[year]++;
+      });
+
+      const years = Object.keys(countPerYear).sort();
+      const counts = years.map(y => countPerYear[y]);
+
+      const chartExternal = new Chart(document.getElementById("chartExternal"), {
+        type: "bar",
+        data: { labels: years, datasets:[{label:"Externally Funded Projects", data:counts, backgroundColor:"#ff7f0e"}]},
+        options: {
+          responsive:true,
+          plugins:{legend:{position:"top"}},
+          scales:{y:{beginAtZero:true, precision:0}},
+          onClick:function(evt,elements){
+            if(elements.length>0){
+              const idx = elements[0].index;
+              const year = this.data.labels[idx];
+              // Filter table by year
+              dataTable.search('').draw();
+              dataTable.rows().every(function(){
+                const data = this.data();
+                if(data[0]!==year) this.nodes().to$().hide();
+                else this.nodes().to$().show();
+              });
+            } else {
+              dataTable.rows().every(function(){ this.nodes().to$().show(); });
+            }
+          }
+        }
+      });
+
+      // Row click for details
+      $(document).on('click','.clickable-row', function(){
+        const rowIdx = $(this).data('index');
+        const project = rawData[rowIdx];
+
+        $('.clickable-row').removeClass('highlighted');
+        $(this).addClass('highlighted');
+
+        let contentHtml = "<ul>";
+        allHeaders.forEach(h=>{
+          contentHtml += `<li><strong>${h}:</strong> ${project[h]||''}</li>`;
+        });
+        contentHtml += "</ul>";
+        $('#detailContent').html(contentHtml);
+        $('#projectDetail').fadeIn();
+        $('html, body').animate({ scrollTop: $('#chartContainer').offset().top }, 500);
+      });
+
+      // Home button
+      $('#homeBtn').on('click',()=>{ window.location.href='index.html'; });
+    }
+  });
+});
+</script>
+
+</body>
+</html>
