@@ -3,16 +3,35 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MSU-IIT CS Faculty Research Dashboard</title>
+<title>MSU-IIT CS Faculty Research and Creativity Dashboard</title>
 
 <!-- DataTables CSS -->
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
-<link rel="stylesheet" href="css/style.css">
+
+<style>
+body { font-family: Arial, sans-serif; margin: 20px; background: #f7f7f7; }
+h1, h2, h3 { text-align: center; }
+
+/* STAT CARDS */
+.stats-grid { display: flex; justify-content: space-around; flex-wrap: wrap; margin-bottom: 30px; }
+.stat-card { background: #0054a6; color: white; padding: 20px; margin: 10px; border-radius: 8px; flex: 1 1 180px; text-align: center; cursor: pointer; transition: 0.2s; }
+.stat-card:hover { background: #003d7a; transform: scale(1.03); }
+
+/* 2-COLUMN LAYOUT */
+.main-grid { display: flex; flex-direction: row; justify-content: space-between; align-items: flex-start; gap: 20px; padding: 10px 20px; }
+.left-panel, .right-panel { background: white; padding: 20px; border-radius: 10px; }
+.left-panel { flex: 1; max-width: 48%; min-width: 350px; }
+.right-panel { flex: 1; max-width: 48%; min-width: 350px; }
+.chart-container { width: 100%; }
+table.dataTable { width: 100%; }
+
+@media(max-width: 900px) {
+  .main-grid { flex-direction: column; }
+  .left-panel, .right-panel { max-width: 100%; }
+}
+</style>
 </head>
 <body>
-
-<!-- Navigation -->
-<div id="navContainer"></div>
 
 <h1>CS Research Dashboard</h1>
 
@@ -39,6 +58,7 @@
     <h2>Research Outputs by Year</h2>
     <canvas id="chartCombined"></canvas>
   </div>
+
   <div class="right-panel">
     <h2>Faculty Members</h2>
     <table id="facultyTable" class="display">
@@ -48,70 +68,83 @@
   </div>
 </div>
 
-<!-- JS Libraries Loader -->
+<!-- JS Libraries -->
 <script src="js/libs.js"></script>
-<!-- CSV Sources -->
 <script src="js/sources.js"></script>
-<!-- Utility scripts -->
-<script src="js/scripts.js"></script>
 
 <script>
-// Wait until jQuery, DataTables, PapaParse, and Chart are loaded
-function initDashboard() {
-  if (typeof $ === "undefined" || typeof Papa === "undefined" || typeof Chart === "undefined") {
-    setTimeout(initDashboard, 50);
-    return;
+$(document).ready(function() {
+
+  // Load Faculty Table
+  function loadFacultyTable() {
+    Papa.parse(CSV_SOURCES.faculty, {
+      download: true,
+      header: true,
+      complete: function(results) {
+        const data = results.data.filter(r => Object.values(r).some(v => v));
+        if (!data.length) return;
+
+        const table = $("#facultyTable");
+        const headers = Object.keys(data[0]);
+
+        table.find("thead").html("<tr>" + headers.map(h => `<th>${h}</th>`).join("") + "</tr>");
+        let tbody = "";
+        data.forEach(row => {
+          tbody += "<tr>" + headers.map(h => `<td>${row[h] || ""}</td>`).join("") + "</tr>";
+        });
+        table.find("tbody").html(tbody);
+        table.DataTable({ scrollX: true, pageLength: 10 });
+      }
+    });
   }
 
-  // Load navigation
-  $("#navContainer").load("nav.html");
+  // Load Yearly Stats + Chart
+  function loadYearlyStats() {
+    Papa.parse(CSV_SOURCES.yearly, {
+      download: true,
+      header: true,
+      skipEmptyLines: true,
+      complete: function(results) {
+        const rows = results.data;
+        if (!rows.length) return;
 
-  // Load faculty table
-  loadCSV(CSV_SOURCES.faculty, "facultyTable");
+        const sample = rows[0];
+        const years = Object.keys(sample).filter(k => /^\d{4}$/.test(k));
 
-  // Load yearly stats and chart
-  Papa.parse(CSV_SOURCES.yearly, {
-    download: true,
-    header: true,
-    skipEmptyLines: true,
-    complete: function(results) {
-      const rows = results.data;
-      if (!rows.length) return;
+        const map = {};
+        rows.forEach(r => map[r["Category"]] = r);
 
-      const sample = rows[0];
-      const years = Object.keys(sample).filter(k => /^\d{4}$/.test(k));
-      const map = {};
-      rows.forEach(r => map[r["Category"]] = r);
+        $("#internalCount").text(map["Internally Funded"]?.["Total"] || 0);
+        $("#externalCount").text(map["Externally Funded"]?.["Total"] || 0);
+        $("#pubCount").text(map["Publications"]?.["Total"] || 0);
+        $("#confCount").text(map["Conferences"]?.["Total"] || 0);
 
-      $("#internalCount").text(map["Internally Funded"]?.["Total"] || 0);
-      $("#externalCount").text(map["Externally Funded"]?.["Total"] || 0);
-      $("#pubCount").text(map["Publications"]?.["Total"] || 0);
-      $("#confCount").text(map["Conferences"]?.["Total"] || 0);
+        const categories = ["Internally Funded","Externally Funded","Publications","Conferences"];
+        const colors = ["#1f77b4","#ff7f0e","#2ca02c","#d62728"];
+        const datasets = categories.map((cat, i) => ({
+          label: cat,
+          backgroundColor: colors[i],
+          data: years.map(y => parseInt(map[cat]?.[y] || 0))
+        }));
 
-      const categories = ["Internally Funded","Externally Funded","Publications","Conferences"];
-      const colors = ["#1f77b4","#ff7f0e","#2ca02c","#d62728"];
-      const datasets = categories.map((cat,i)=>({
-        label: cat,
-        backgroundColor: colors[i],
-        data: years.map(y=>parseInt(map[cat]?.[y]||0))
-      }));
+        new Chart(document.getElementById("chartCombined"), {
+          type: "bar",
+          data: { labels: years, datasets: datasets },
+          options: {
+            responsive: true,
+            plugins: { legend: { position: "top" } },
+            scales: { y: { beginAtZero: true } }
+          }
+        });
+      }
+    });
+  }
 
-      new Chart(document.getElementById("chartCombined"), {
-        type: "bar",
-        data: { labels: years, datasets: datasets },
-        options: {
-          responsive: true,
-          plugins: { legend: { position: "top" } },
-          scales: { y: { beginAtZero: true } }
-        }
-      });
-    }
-  });
-}
+  // Initialize
+  loadFacultyTable();
+  loadYearlyStats();
 
-// Initialize dashboard
-initDashboard();
+});
 </script>
-
 </body>
 </html>
