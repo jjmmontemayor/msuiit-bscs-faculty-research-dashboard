@@ -1,3 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Internally Funded Projects</title>
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+<link rel="stylesheet" href="css/style.css">
+
+<!-- JS Libraries -->
+<script src="js/libs.js"></script>
+<script src="js/sources.js"></script>
+</head>
+<body>
+
+<h1>Internally Funded Projects</h1>
+
+<div class="chart-container" style="width:90%; max-width:800px; margin: 20px auto;">
+  <canvas id="internalChart"></canvas>
+</div>
+
+<table id="internalTable" class="display" style="width:90%; margin: 20px auto;">
+  <thead><tr></tr></thead>
+  <tbody></tbody>
+</table>
+
 <script>
 window.addEventListener('load', () => {
   Papa.parse(CSV_SOURCES.internals, {
@@ -8,8 +34,9 @@ window.addEventListener('load', () => {
       const rawData = results.data.filter(r => Object.values(r).some(v => v));
       if (!rawData.length) return;
 
+      // Determine which columns to display (A, C, D, E)
       const allHeaders = Object.keys(rawData[0]);
-      const displayCols = [allHeaders[0], allHeaders[2], allHeaders[3], allHeaders[4]]; // A, C, D, E
+      const displayCols = [allHeaders[0], allHeaders[2], allHeaders[3], allHeaders[4]];
 
       // Build table
       const $table = $("#internalTable");
@@ -19,12 +46,11 @@ window.addEventListener('load', () => {
         tbody += "<tr>" + displayCols.map(h => `<td>${row[h] || ""}</td>`).join("") + "</tr>";
       });
       $table.find("tbody").html(tbody);
-
       $table.DataTable({scrollX: true, pageLength: 10});
 
-      // --- Chart: count per year ---
-      // Find which column corresponds to Year
-      const yearCol = allHeaders[2]; // assuming column C or adjust accordingly
+      // Chart: count of projects per year
+      // Adjust the year column index if needed
+      const yearCol = allHeaders[2]; // Assuming column C is the Year
       const countPerYear = {};
 
       rawData.forEach(r => {
@@ -57,3 +83,5 @@ window.addEventListener('load', () => {
   });
 });
 </script>
+</body>
+</html>
