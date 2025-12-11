@@ -104,7 +104,8 @@ async function showFacultyDetails(name) {
 
   // Create regex from faculty name, case-insensitive, match anywhere
   const nameRegex = new RegExp(name.split(' ').slice(-1)[0], 'i'); // last name only
-
+  console.log(nameRegex);
+  
   const filterMatch = (data, cols) => 
     data.filter(r => cols.some(c => nameRegex.test(r[c] || '')));
 
@@ -112,6 +113,8 @@ async function showFacultyDetails(name) {
   const externalMatches = filterMatch(externals, ['D','E']);
   const publicationMatches = filterMatch(publications, ['C']);
   const conferenceMatches = filterMatch(conferences, ['B']);
+
+  console.log(internalMatches);
 
   function buildTable(title, data) {
     if(!data.length) return `<h3>${title}: None</h3>`;
