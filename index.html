@@ -3,167 +3,108 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CS Research Dashboard</title>
-
-  <!-- DataTables CSS -->
-  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
-
+  <title>Index – Statistics & Faculty</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; background: #f7f7f7; }
-    h1, h2, h3 { text-align: center; }
-    .stats-grid { display: flex; justify-content: space-around; flex-wrap: wrap; margin-bottom: 30px; }
-    .stat-card {
-      background: #0054a6; color: white;
-      padding: 20px; margin: 10px;
-      border-radius: 8px; flex: 1 1 180px;
-      text-align: center; font-size: 18px;
-    }
-    .chart-container { width: 90%; margin: 30px auto; }
-    table.dataTable { background: white; width: 90%; margin: 20px auto; }
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    h1 { margin-bottom: 20px; }
+    .container { display: flex; gap: 20px; align-items: flex-start; }
+    .chart-box { flex: 1; }
+    .table-box { flex: 1; max-height: 90vh; overflow-y: auto; border: 1px solid #ddd; padding: 10px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
+    th { background: #f0f0f0; position: sticky; top: 0; }
   </style>
 </head>
-
 <body>
+  <h1>Department Summary & Faculty</h1>
 
-<h1>CS Research Dashboard</h1>
+  <div class="container">
+    <!-- CHART SECTION -->
+    <div class="chart-box">
+      <canvas id="yearlyChart"></canvas>
+    </div>
 
-<!-- =======================
-       STATISTICS SECTION
-======================= -->
-<section id="stats">
-  <h2>Research Statistics</h2>
-
-  <div class="stats-grid">
-    <div class="stat-card"><span id="internalCount">0</span><br>Internally Funded</div>
-    <div class="stat-card"><span id="externalCount">0</span><br>Externally Funded</div>
-    <div class="stat-card"><span id="pubCount">0</span><br>Publications</div>
-    <div class="stat-card"><span id="confCount">0</span><br>Conferences</div>
+    <!-- FACULTY TABLE -->
+    <div class="table-box">
+      <h2>Faculty Members</h2>
+      <table id="facultyTable"></table>
+    </div>
   </div>
 
-  <div class="chart-container">
-    <h3>Research Outputs by Year</h3>
-    <canvas id="chartCombined"></canvas>
-  </div>
-</section>
+  <script>
+    const yearlyCSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR-jDPbQ-ZCkBK8_1igyWkHd3ynUPHh5l8eI6KmD-qhpu9ZeYTqYV11X7NQ82NbYyEwvSiTzGVD6-3L/pub?gid=0&single=true&output=csv";
+    const facultyCSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR-jDPbQ-ZCkBK8_1igyWkHd3ynUPHh5l8eI6KmD-qhpu9ZeYTqYV11X7NQ82NbYyEwvSiTzGVD6-3L/pub?gid=5470856&single=true&output=csv";
 
-<!-- =======================
-       FACULTY TABLE
-======================= -->
-<section>
-  <h2>Faculty Members</h2>
-
-  <table id="facultyTable" class="display" style="width:100%;">
-    <thead></thead>
-    <tbody></tbody>
-  </table>
-</section>
-
-<!-- JS LIBRARIES -->
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<script>
-// CSV SOURCES
-const facultyCSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR-jDPbQ-ZCkBK8_1igyWkHd3ynUPHh5l8eI6KmD-qhpu9ZeYTqYV11X7NQ82NbYyEwvSiTzGVD6-3L/pub?gid=5470856&single=true&output=csv";
-const yearlyCSV  = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR-jDPbQ-ZCkBK8_1igyWkHd3ynUPHh5l8eI6KmD-qhpu9ZeYTqYV11X7NQ82NbYyEwvSiTzGVD6-3L/pub?gid=743932525&single=true&output=csv";
-
-// =========================
-// LOAD FACULTY TABLE
-// =========================
-function loadFacultyTable() {
-  Papa.parse(facultyCSV, {
-    download: true,
-    header: true,
-    complete: function(results) {
-      const raw = results.data || [];
-      const data = raw.filter(r => Object.values(r).some(v => v && String(v).trim() !== ""));
-
-      const $table = $("#facultyTable");
-
-      // Destroy existing DataTable
-      if ($.fn.DataTable.isDataTable($table)) {
-        $table.DataTable().clear().destroy();
-        $table.empty().append("<thead></thead><tbody></tbody>");
-      }
-
-      if (!data.length) return;
-
-      const headers = Object.keys(data[0]);
-
-      // DataTable render using columns (prevents misalignment)
-      const columns = headers.map(h => ({ title: h, data: h }));
-
-      $table.DataTable({
-        data: data,
-        columns: columns,
-        scrollX: true,
-        autoWidth: false,
-        pageLength: 10,
-        columnDefs: [{ targets: "_all", defaultContent: "" }]
-      });
+    async function parseCSV(url) {
+      const response = await fetch(url);
+      const text = await response.text();
+      return text.split("\n").map(row => row.split(","));
     }
-  });
-}
 
-// =============================
-// LOAD YEARLY TOTALS + CHART
-// =============================
-function loadYearlyStats() {
-  Papa.parse(yearlyCSV, {
-    download: true,
-    header: true,
-    complete: function(results) {
-      const rows = results.data.filter(r => r.Category);
+    async function loadYearly() {
+      const rows = await parseCSV(yearlyCSV);
+      const header = rows[0];
+      const data = rows.slice(1);
 
-      // === Totals ===
-      const totals = {};
-      rows.forEach(r => totals[r.Category] = parseInt(r.Total) || 0);
+      const labels = header.slice(2); // years
 
-      document.getElementById("internalCount").textContent = totals["Internally Funded"] || 0;
-      document.getElementById("externalCount").textContent = totals["Externally Funded"] || 0;
-      document.getElementById("pubCount").textContent      = totals["Publications"] || 0;
-      document.getElementById("confCount").textContent     = totals["Conferences"] || 0;
+      const categoriesToShow = ["Internally Funded", "Externally Funded", "Publications", "Conferences"];
 
-      // === Combined bar graph ===
-      const categories = ["Internally Funded","Externally Funded","Publications","Conferences"];
-
-      // Extract year columns (2018–2025)
-      const yearColumns = Object.keys(rows[0]).filter(c => /^\d{4}$/.test(c));
-
-      const datasets = categories.map((cat, i) => {
-        const row = rows.find(r => r.Category === cat);
+      const datasets = categoriesToShow.map((category, index) => {
+        const row = data.find(r => r[0] === category);
         return {
-          label: cat,
-          data: yearColumns.map(y => parseInt(row[y] || 0)),
-          backgroundColor: `hsl(${i * 80}, 70%, 50%)`
+          label: category,
+          data: row.slice(2).map(Number),
+          backgroundColor: `rgba(${50 + index * 50}, 99, 200, 0.7)`
         };
       });
 
-      new Chart(document.getElementById("chartCombined"), {
-        type: "bar",
-        data: {
-          labels: yearColumns,
-          datasets: datasets
-        },
+      new Chart(document.getElementById('yearlyChart'), {
+        type: 'bar',
+        data: { labels, datasets },
         options: {
           responsive: true,
-          plugins: { legend: { position: "top" } },
-          scales: { y: { beginAtZero: true } }
+          plugins: {
+            legend: { position: 'top' }
+          },
+          scales: { x: { stacked: false }, y: { beginAtZero: true } }
         }
       });
     }
-  });
-}
 
-// =============================
-// INITIAL LOAD
-// =============================
-loadFacultyTable();
-loadYearlyStats();
+    async function loadFaculty() {
+      const rows = await parseCSV(facultyCSV);
+      const table = document.getElementById("facultyTable");
 
-</script>
+      table.innerHTML = "";
+      const thead = document.createElement("thead");
+      const tbody = document.createElement("tbody");
 
+      const headerRow = document.createElement("tr");
+      rows[0].forEach(col => {
+        const th = document.createElement("th");
+        th.textContent = col;
+        headerRow.appendChild(th);
+      });
+      thead.appendChild(headerRow);
+
+      rows.slice(1).forEach(row => {
+        const tr = document.createElement("tr");
+        row.forEach(col => {
+          const td = document.createElement("td");
+          td.textContent = col;
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+
+      table.appendChild(thead);
+      table.appendChild(tbody);
+    }
+
+    loadYearly();
+    loadFaculty();
+  </script>
 </body>
 </html>
