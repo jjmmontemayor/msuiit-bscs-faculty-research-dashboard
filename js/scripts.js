@@ -1,3 +1,20 @@
+// ==============================
+// NAVIGATION LOADER
+// ==============================
+window.addEventListener('DOMContentLoaded', () => {
+  fetch('nav.html')
+    .then(response => response.text())
+    .then(html => {
+      const container = document.createElement('div');
+      container.innerHTML = html;
+      document.body.prepend(container);
+    })
+    .catch(err => console.error('Failed to load nav:', err));
+});
+
+// ==============================
+// CSV TABLE LOADER
+// ==============================
 function loadCSV(csvUrl, tableId, callback) {
   Papa.parse(csvUrl, {
     download: true,
@@ -33,7 +50,8 @@ function loadCSV(csvUrl, tableId, callback) {
       // Initialize DataTable
       $(`#${tableId}`).DataTable({
         pageLength: 10,
-        order: [[0,'desc']]
+        order: [[0,'desc']],
+        scrollX: true
       });
 
       // Optional chart callback
