@@ -8,7 +8,6 @@
 <!-- DataTables CSS -->
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
 <link rel="stylesheet" href="css/style.css">
-
 </head>
 <body>
 
@@ -40,7 +39,6 @@
     <h2>Research Outputs by Year</h2>
     <canvas id="chartCombined"></canvas>
   </div>
-
   <div class="right-panel">
     <h2>Faculty Members</h2>
     <table id="facultyTable" class="display">
@@ -58,14 +56,20 @@
 <script src="js/scripts.js"></script>
 
 <script>
-$(document).ready(function() {
+// Wait until jQuery, DataTables, PapaParse, and Chart are loaded
+function initDashboard() {
+  if (typeof $ === "undefined" || typeof Papa === "undefined" || typeof Chart === "undefined") {
+    setTimeout(initDashboard, 50);
+    return;
+  }
+
   // Load navigation
   $("#navContainer").load("nav.html");
 
-  // Faculty table
-  loadCSV(CSV_SOURCES.faculty, 'facultyTable');
+  // Load faculty table
+  loadCSV(CSV_SOURCES.faculty, "facultyTable");
 
-  // Yearly stats + chart
+  // Load yearly stats and chart
   Papa.parse(CSV_SOURCES.yearly, {
     download: true,
     header: true,
@@ -76,17 +80,14 @@ $(document).ready(function() {
 
       const sample = rows[0];
       const years = Object.keys(sample).filter(k => /^\d{4}$/.test(k));
-
       const map = {};
       rows.forEach(r => map[r["Category"]] = r);
 
-      // Update stat cards
       $("#internalCount").text(map["Internally Funded"]?.["Total"] || 0);
       $("#externalCount").text(map["Externally Funded"]?.["Total"] || 0);
       $("#pubCount").text(map["Publications"]?.["Total"] || 0);
       $("#confCount").text(map["Conferences"]?.["Total"] || 0);
 
-      // Chart
       const categories = ["Internally Funded","Externally Funded","Publications","Conferences"];
       const colors = ["#1f77b4","#ff7f0e","#2ca02c","#d62728"];
       const datasets = categories.map((cat,i)=>({
@@ -106,7 +107,10 @@ $(document).ready(function() {
       });
     }
   });
-});
+}
+
+// Initialize dashboard
+initDashboard();
 </script>
 
 </body>
