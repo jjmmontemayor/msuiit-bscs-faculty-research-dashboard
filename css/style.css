@@ -20,3 +20,28 @@ table.dataTable thead th {
   width: 80%;
   margin: 30px auto;
 }
+
+/* Ensure DataTables and wrappers fill container */
+.dataTables_wrapper {
+  width: 100%;
+}
+
+table.dataTable {
+  width: 100% !important;
+}
+
+.faculty-instruction {
+  text-align: center;
+  font-size: 0.9rem;
+  color: #666;
+  margin-top: -10px;
+  margin-bottom: 10px;
+}
+
+#facultyTable tbody tr {
+  cursor: pointer;
+}
+
+#facultyTable tbody tr:hover {
+  background-color: #eef5ff;
+}

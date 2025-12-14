@@ -4,89 +4,39 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Publications</title>
+
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
 <link rel="stylesheet" href="css/style.css">
 
 <style>
-/* Top-left home icon */
-#homeBtn {
-  position: fixed;
-  top: 20px;
-  left: 20px;
-  font-size: 24px;
-  cursor: pointer;
-  color: #0054a6;
-  z-index: 1000;
-}
-
-/* Two-panel layout */
-.main-grid {
-  display: flex;
-  gap: 20px;
-  padding: 60px 20px 20px 20px; /* leave space for home button */
-  flex-wrap: wrap;
-}
-
-.left-panel, .right-panel {
-  background: white;
-  padding: 20px;
-  border-radius: 10px;
-}
-
-.left-panel {
-  flex: 1;
-  min-width: 300px;
-}
-
-.right-panel {
-  flex: 1;
-  min-width: 300px;
-}
-
-/* Chart container */
-.chart-container {
-  width: 100%;
-  margin-bottom: 20px;
-}
-
-/* Details container */
-#projectDetail {
-  display: none;
-}
-
-/* Highlight row */
-.clickable-row:hover {
-  background-color: #e6f0ff;
-  cursor: pointer;
-}
-.highlighted {
-  background-color: #cce0ff !important;
-}
-
-/* Responsive */
-@media(max-width: 900px) {
-  .main-grid { flex-direction: column; }
-}
+#homeBtn { position: fixed; top: 20px; left: 20px; font-size: 24px; cursor: pointer; color: #0054a6; z-index: 1000; }
+.main-grid { display: flex; gap: 20px; padding: 60px 20px 20px 20px; flex-wrap: wrap; }
+.left-panel, .right-panel { background: white; padding: 20px; border-radius: 10px; }
+.left-panel { flex: 1; min-width: 300px; }
+.right-panel { flex: 1; min-width: 300px; }
+.chart-container { width: 100%; margin-bottom: 20px; }
+#projectDetail { display: none; margin-top: 20px; }
+#showAllBtn { margin-bottom: 10px; cursor: pointer; color: #0054a6; font-weight: bold; }
+.clickable-row:hover { background-color: #e6f0ff; cursor: pointer; }
+.highlighted { background-color: #cce0ff !important; }
+@media(max-width: 900px) { .main-grid { flex-direction: column; } }
 </style>
 </head>
 <body>
 
-<!-- Home Icon -->
 <div id="homeBtn">🏠</div>
-
 <h1>Publications</h1>
 
 <div class="main-grid">
-  <!-- Left Panel: Project List -->
   <div class="left-panel">
     <h2>Publications</h2>
+    <div id="showAllBtn">🔄 Show All Publications</div>
     <table id="publicationsTable" class="display" style="width:100%;">
       <thead><tr></tr></thead>
       <tbody></tbody>
     </table>
   </div>
 
-  <!-- Right Panel: Chart + Details -->
   <div class="right-panel">
     <div id="chartContainer">
       <h2>Publications per Year</h2>
@@ -111,76 +61,96 @@ window.addEventListener('load', () => {
     header: true,
     skipEmptyLines: true,
     complete: function(results) {
+
       const rawData = results.data.filter(r => Object.values(r).some(v => v));
       if (!rawData.length) return;
 
-      const allHeaders = Object.keys(rawData[0]);
-      const tableCols = [allHeaders[0], allHeaders[1]]; // columns A & B
+      // Columns to show in table
+      const visibleCols = ["Year", "Publication Title", "Source / Publisher"];
+      const yearCol = "Year";
+      let dataTable = null;
+      let currentData = [...rawData];
 
-      // Build table
-      const $table = $("#publicationsTable");
-      $table.find("thead").html("<tr>" + tableCols.map(h => `<th>${h}</th>`).join("") + "</tr>");
-      let tbody = "";
-      rawData.forEach((row, idx) => {
-        tbody += "<tr class='clickable-row' data-index='"+idx+"'>" +
-                  tableCols.map(h => `<td>${row[h]||""}</td>`).join("") +
-                 "</tr>";
-      });
-      $table.find("tbody").html(tbody);
-      const dataTable = $table.DataTable({scrollX:true, pageLength:10});
+      function isLink(value) {
+        return /^https?:\/\/\S+$/i.test(value);
+      }
 
-      // Chart: count per year (column A)
-      const yearCol = allHeaders[0];
+      const buildTable = (data) => {
+        currentData = data;
+
+        const $table = $("#publicationsTable");
+        $table.find("thead").html("<tr>" + visibleCols.map(h => `<th>${h}</th>`).join("") + "</tr>");
+
+        let tbody = "";
+        data.forEach((row, idx) => {
+          tbody += `<tr class="clickable-row" data-index="${idx}">` +
+            visibleCols.map(h => {
+              const val = row[h] || '';
+              return `<td>${isLink(val) ? `<a href="${val}" target="_blank">${val} 🔗</a>` : val}</td>`;
+            }).join("") +
+          `</tr>`;
+        });
+        $table.find("tbody").html(tbody);
+
+        if(dataTable) dataTable.destroy();
+        dataTable = $table.DataTable({ scrollX:true, pageLength:10 });
+      };
+
+      buildTable(rawData);
+
+      // Chart
       const countPerYear = {};
       rawData.forEach(r => {
         const year = r[yearCol];
         if(!year) return;
-        if(!countPerYear[year]) countPerYear[year] = 0;
-        countPerYear[year]++;
+        countPerYear[year] = (countPerYear[year] || 0) + 1;
       });
 
       const years = Object.keys(countPerYear).sort();
       const counts = years.map(y => countPerYear[y]);
 
-      new Chart(document.getElementById("chartPublications"), {
+      const ctx = document.getElementById("chartPublications").getContext("2d");
+      const chart = new Chart(ctx, {
         type: "bar",
-        data: { labels: years, datasets:[{label:"Publications", data:counts, backgroundColor:"#2ca02c"}]},
+        data: { labels: years, datasets:[{label:"Publications", data:counts, backgroundColor:"#2ca02c"}] },
         options: {
           responsive:true,
           plugins:{legend:{position:"top"}},
-          scales:{y:{beginAtZero:true, precision:0}}
+          scales:{y:{beginAtZero:true, precision:0}},
+          onClick: (evt, elements) => {
+            if(elements.length){
+              const idx = elements[0].index;
+              const selectedYear = years[idx];
+              buildTable(rawData.filter(r => r[yearCol] === selectedYear));
+            }
+          }
         }
       });
 
-      // Row click: show details
-      $(document).on('click','.clickable-row', function(){
-        const rowIdx = $(this).data('index');
-        const project = rawData[rowIdx];
+      // Show All button
+      $('#showAllBtn').on('click', () => buildTable(rawData));
+
+      // Row click → Details
+      $(document).off('click', '.clickable-row');
+      $(document).on('click', '.clickable-row', function(){
+        const idx = $(this).data('index');
+        const record = currentData[idx];
 
         $('.clickable-row').removeClass('highlighted');
         $(this).addClass('highlighted');
 
-        // Image preview for column B if URL
-        const linkVal = project[allHeaders[1]] || '';
-        let imgHtml = '';
-        if(linkVal && linkVal.startsWith('http')) {
-          imgHtml = `<div style="text-align:center;margin-bottom:10px;">
-                       <img src="${linkVal}" alt="Preview" style="max-width:100%; max-height:300px; border-radius:8px; box-shadow:0 0 5px rgba(0,0,0,0.3);">
-                     </div>`;
-        }
-
         let contentHtml = "<ul>";
-        tableCols.forEach(h => {
-          contentHtml += `<li><strong>${h}:</strong> ${project[h] || ''}</li>`;
+        visibleCols.forEach(h => {
+          const val = record[h] || '';
+          contentHtml += `<li><strong>${h}:</strong> ${isLink(val) ? `<a href="${val}" target="_blank">${val} 🔗</a>` : val}</li>`;
         });
         contentHtml += "</ul>";
 
-        $('#detailContent').html(imgHtml + contentHtml);
+        $('#detailContent').html(contentHtml);
         $('#projectDetail').fadeIn();
         $('html, body').animate({ scrollTop: $('#chartContainer').offset().top }, 500);
       });
 
-      // Home button
       $('#homeBtn').on('click',()=>{ window.location.href='index.html'; });
     }
   });

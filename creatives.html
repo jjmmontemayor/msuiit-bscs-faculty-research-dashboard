@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Creative Works</title>
+
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+<link rel="stylesheet" href="css/style.css">
+
+<style>
+#homeBtn {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  font-size: 24px;
+  cursor: pointer;
+  color: #0054a6;
+  z-index: 1000;
+}
+
+.main-grid {
+  display: flex;
+  gap: 20px;
+  padding: 60px 20px 20px 20px;
+  flex-wrap: wrap;
+}
+
+.left-panel, .right-panel {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+}
+
+.left-panel { flex: 1; min-width: 300px; }
+.right-panel { flex: 1; min-width: 300px; }
+
+.chart-container {
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+#projectDetail {
+  display: none;
+  margin-top: 20px;
+}
+
+#showAllBtn {
+  margin-bottom: 10px;
+  cursor: pointer;
+  color: #0054a6;
+  font-weight: bold;
+}
+
+.clickable-row:hover {
+  background-color: #e6f0ff;
+  cursor: pointer;
+}
+
+.highlighted {
+  background-color: #cce0ff !important;
+}
+
+@media(max-width: 900px) {
+  .main-grid { flex-direction: column; }
+}
+</style>
+</head>
+
+<body>
+
+<div id="homeBtn">🏠</div>
+<h1>Creative Works</h1>
+
+<div class="main-grid">
+  <!-- LEFT PANEL -->
+  <div class="left-panel">
+    <h2>Creative Works</h2>
+    <div id="showAllBtn">🔄 Show All Creative Works</div>
+
+    <table id="creativesTable" class="display" style="width:100%;">
+      <thead><tr></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel">
+    <div id="chartContainer">
+      <h2>Creative Works per Year</h2>
+      <div class="chart-container">
+        <canvas id="chartCreatives"></canvas>
+      </div>
+    </div>
+
+    <div id="projectDetail">
+      <h2>Creative Work Details</h2>
+      <div id="detailContent"></div>
+    </div>
+  </div>
+</div>
+
+<script src="js/libs.js"></script>
+<script src="js/sources.js"></script>
+
+<script>
+window.addEventListener('load', () => {
+  Papa.parse(CSV_SOURCES.creatives, {
+    download: true,
+    header: true,
+    skipEmptyLines: true,
+    complete: function(results) {
+
+      const rawData = results.data.filter(r => Object.values(r).some(v => v));
+      if (!rawData.length) return;
+
+      const allHeaders = Object.keys(rawData[0]);
+
+      // Columns to show in the table
+      const tableColumns = ["Year", "Title of Creative Work", "Faculty", "Students", "Other Contributors", "Related Project"];
+      const titleCol = "Title of Creative Work";
+      const linkCol  = "Link to Creative Work";
+      const yearCol  = "Year";
+
+      let dataTable = null;
+      let currentData = [...rawData];
+
+      function buildTable(data) {
+        currentData = data;
+
+        if (dataTable) {
+          dataTable.clear().destroy();
+        }
+
+        const $table = $("#creativesTable");
+        $table.find("thead").html(
+          "<tr>" + tableColumns.map(h => `<th>${h}</th>`).join("") + "</tr>"
+        );
+
+        let tbody = "";
+        data.forEach((row, idx) => {
+          tbody += `<tr class="clickable-row" data-index="${idx}">` +
+            tableColumns.map(h => {
+              if (h === titleCol) {
+                const link = row[linkCol];
+                return `<td>${
+                  link ? `<a href="${link}" target="_blank">${row[h]} 🔗</a>` : (row[h] || "")
+                }</td>`;
+              }
+              return `<td>${row[h] || ""}</td>`;
+            }).join("") +
+          `</tr>`;
+        });
+
+        $table.find("tbody").html(tbody);
+        dataTable = $table.DataTable({ scrollX: true, pageLength: 10 });
+      }
+
+      // Initial table
+      buildTable(rawData);
+
+      // ===== Chart =====
+      const countPerYear = {};
+      rawData.forEach(r => {
+        const y = r[yearCol];
+        if (!y) return;
+        countPerYear[y] = (countPerYear[y] || 0) + 1;
+      });
+
+      const years = Object.keys(countPerYear).sort();
+      const counts = years.map(y => countPerYear[y]);
+
+      const chart = new Chart(document.getElementById("chartCreatives"), {
+        type: "bar",
+        data: {
+          labels: years,
+          datasets: [{
+            label: "Creative Works",
+            data: counts,
+            backgroundColor: "#9467bd"
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { position: "top" } },
+          scales: { y: { beginAtZero: true, precision: 0 } },
+          onClick: (evt, elements) => {
+            if (elements.length) {
+              const idx = elements[0].index;
+              const selectedYear = years[idx];
+              buildTable(rawData.filter(r => r[yearCol] === selectedYear));
+            }
+          }
+        }
+      });
+
+      // Show all
+      $('#showAllBtn').on('click', () => buildTable(rawData));
+
+      // Row click → Details
+      $(document).off('click', '.clickable-row');
+      $(document).on('click', '.clickable-row', function () {
+        const idx = $(this).data('index');
+        const record = currentData[idx];
+
+        $('.clickable-row').removeClass('highlighted');
+        $(this).addClass('highlighted');
+
+        let html = "<ul>";
+        allHeaders.forEach(h => {
+          const value = record[h] || "";
+          const isLink = h === titleCol || /^(Link to|URL|Website|SO)/i.test(h);
+          html += `<li><strong>${h}:</strong> ${
+            isLink && value ? `<a href="${value}" target="_blank">${value} 🔗</a>` : value
+          }</li>`;
+        });
+        html += "</ul>";
+
+        $('#detailContent').html(html);
+        $('#projectDetail').fadeIn();
+        $('html, body').animate({ scrollTop: $('#chartContainer').offset().top }, 400);
+      });
+
+      // Home
+      $('#homeBtn').on('click', () => location.href = 'index.html');
+    }
+  });
+});
+</script>
+
+</body>
+</html>

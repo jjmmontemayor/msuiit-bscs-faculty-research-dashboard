@@ -1,41 +1,176 @@
-<table id="conferencesTable" class="display" style="width:100%"></table>
-<canvas id="chartConferences"></canvas>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Conferences</title>
+
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+<link rel="stylesheet" href="css/style.css">
+
+<style>
+#homeBtn { position: fixed; top: 20px; left: 20px; font-size: 24px; cursor: pointer; color: #0054a6; z-index: 1000; }
+.main-grid { display: flex; gap: 20px; padding: 60px 20px 20px 20px; flex-wrap: wrap; }
+.left-panel, .right-panel { background: white; padding: 20px; border-radius: 10px; }
+.left-panel { flex: 1; min-width: 300px; }
+.right-panel { flex: 1; min-width: 300px; }
+.chart-container { width: 100%; margin-bottom: 20px; }
+#projectDetail { display: none; margin-top: 20px; }
+#showAllBtn { margin-bottom: 10px; cursor: pointer; color: #0054a6; font-weight: bold; }
+.clickable-row:hover { background-color: #e6f0ff; cursor: pointer; }
+.highlighted { background-color: #cce0ff !important; }
+@media(max-width: 900px) { .main-grid { flex-direction: column; } }
+</style>
+</head>
+<body>
+
+<div id="homeBtn">🏠</div>
+<h1>Conferences</h1>
+
+<div class="main-grid">
+  <div class="left-panel">
+    <h2>Conferences</h2>
+    <div id="showAllBtn">🔄 Show All Conferences</div>
+    <table id="conferencesTable" class="display" style="width:100%;">
+      <thead><tr></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="right-panel">
+    <div id="chartContainer">
+      <h2>Conferences per Year</h2>
+      <div class="chart-container">
+        <canvas id="chartConferences"></canvas>
+      </div>
+    </div>
+
+    <div id="projectDetail">
+      <h2>Conference Details</h2>
+      <div id="detailContent"></div>
+    </div>
+  </div>
+</div>
+
+<script src="js/libs.js"></script>
+<script src="js/sources.js"></script>
 
 <script>
-const csvUrl = CSVS.conferences; // Pull from CSV object
+window.addEventListener('load', () => {
+  Papa.parse(CSV_SOURCES.conferences, {
+    download: true,
+    header: true,
+    skipEmptyLines: true,
+    complete: function(results) {
 
-Papa.parse(csvUrl, {
-  download:true,
-  header:true,
-  skipEmptyLines:true,
-  complete:function(results){
-    const data = results.data;
-    const headers = results.meta.fields;
+      const rawData = results.data.filter(r => Object.values(r).some(v => v));
+      if (!rawData.length) return;
 
-    const thead = $('#conferencesTable thead tr');
-    headers.forEach(h => thead.append(`<th>${h}</th>`));
+      const allHeaders = Object.keys(rawData[0]);
+      const titleCol = "Conference Title";
+      const linkCol = "Link to Conference";
+      const yearCol = allHeaders[0]; // assuming first column is Year
+      const visibleCols = allHeaders.filter(h => h !== linkCol);
 
-    const tbody = $('#conferencesTable tbody');
-    data.forEach(row=>{
-      let tr='<tr>';
-      headers.forEach(h=>tr+=`<td>${row[h]||''}</td>`);
-      tr+='</tr>';
-      tbody.append(tr);
-    });
+      let dataTable = null;
+      let currentData = [...rawData]; // currently displayed data
 
-    $('#conferencesTable').DataTable({pageLength:10, order:[[0,'desc']]});
+      const buildTable = (data) => {
+        currentData = data;
 
-    // Chart per year
-    const yearCounts = {};
-    data.forEach(row => { if(row.Year) yearCounts[row.Year] = (yearCounts[row.Year]||0)+1; });
-    const labels = Object.keys(yearCounts).sort((a,b)=>a-b);
-    const chartData = labels.map(y=>yearCounts[y]);
+        // Destroy existing table if exists
+        if (dataTable) {
+          dataTable.clear().destroy();
+        }
 
-    new Chart(document.getElementById('chartConferences'), {
-      type:'bar',
-      data:{labels:labels, datasets:[{label:'Projects per Year', data:chartData, backgroundColor:'rgba(75,192,192,0.6)'}]},
-      options:{responsive:true, plugins:{legend:{display:false}, title:{display:true,text:'Internal Projects per Year'}}, scales:{y:{beginAtZero:true, precision:0}}}
-    });
-  }
+        const $table = $("#conferencesTable");
+        $table.find("thead").html("<tr>" + visibleCols.map(h => `<th>${h}</th>`).join("") + "</tr>");
+
+        let tbody = "";
+        data.forEach((row, idx) => {
+          tbody += `<tr class="clickable-row" data-index="${idx}">` +
+            visibleCols.map(h => {
+              if(h === titleCol){
+                const link = row[linkCol];
+                return `<td>${link ? `<a href="${link}" target="_blank">${row[h]} 🔗</a>` : row[h]}</td>`;
+              }
+              return `<td>${row[h] || ""}</td>`;
+            }).join("") +
+          `</tr>`;
+        });
+        $table.find("tbody").html(tbody);
+
+        // Initialize DataTable
+        dataTable = $table.DataTable({ scrollX:true, pageLength:10 });
+      };
+
+      buildTable(rawData);
+
+      // Chart
+      const countPerYear = {};
+      rawData.forEach(r => {
+        const year = r[yearCol];
+        if(!year) return;
+        countPerYear[year] = (countPerYear[year] || 0) + 1;
+      });
+
+      const years = Object.keys(countPerYear).sort();
+      const counts = years.map(y => countPerYear[y]);
+
+      const ctx = document.getElementById("chartConferences").getContext("2d");
+      const chart = new Chart(ctx, {
+        type: "bar",
+        data: { labels: years, datasets:[{label:"Conferences", data:counts, backgroundColor:"#1f77b4"}] },
+        options: {
+          responsive:true,
+          plugins:{legend:{position:"top"}},
+          scales:{y:{beginAtZero:true, precision:0}},
+          onClick: (evt, elements) => {
+            if(elements.length){
+              const idx = elements[0].index;
+              const selectedYear = years[idx];
+              const filteredData = rawData.filter(r => r[yearCol] === selectedYear);
+              buildTable(filteredData);
+            }
+          }
+        }
+      });
+
+      // Show All button
+      $('#showAllBtn').on('click', () => buildTable(rawData));
+
+      // Row click → Details uses currentData
+      $(document).off('click', '.clickable-row'); // remove previous handlers
+      $(document).on('click', '.clickable-row', function () {
+        const idx = $(this).data('index');
+        const record = currentData[idx];
+
+        $('.clickable-row').removeClass('highlighted');
+        $(this).addClass('highlighted');
+
+        let contentHtml = "<ul>";
+        allHeaders.forEach(h => {
+          if(h === titleCol){
+            const link = record[linkCol];
+            contentHtml += `<li><strong>${h}:</strong> ${
+              link ? `<a href="${link}" target="_blank">${record[h]} 🔗</a>` : record[h]
+            }</li>`;
+          } else {
+            contentHtml += `<li><strong>${h}:</strong> ${record[h] || ''}</li>`;
+          }
+        });
+        contentHtml += "</ul>";
+
+        $('#detailContent').html(contentHtml);
+        $('#projectDetail').fadeIn();
+        $('html, body').animate({ scrollTop: $('#chartContainer').offset().top }, 500);
+      });
+
+      // Home button
+      $('#homeBtn').on('click', () => { window.location.href = 'index.html'; });
+    }
+  });
 });
 </script>
+</body>
+</html>
