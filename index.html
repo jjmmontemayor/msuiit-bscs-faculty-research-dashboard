@@ -109,27 +109,47 @@ async function showFacultyDetails(name) {
   const filterMatch = (data, cols) => 
     data.filter(r => cols.some(c => nameRegex.test(r[c] || '')));
 
-  const internalMatches = filterMatch(internals, ['D','E']);
-  const externalMatches = filterMatch(externals, ['D','E']);
-  const publicationMatches = filterMatch(publications, ['C']);
-  const conferenceMatches = filterMatch(conferences, ['B']);
+  const internalMatches = filterMatch(internals, ['Project Leader','Research Team Members']);
+  const externalMatches = filterMatch(externals, ['Project Leader','Research Team Members']);
+  const publicationMatches = filterMatch(publications, ['Authors']);
+  const conferenceMatches = filterMatch(conferences, ['Faculty']);
 
   console.log(internalMatches);
 
-  function buildTable(title, data) {
-    if(!data.length) return `<h3>${title}: None</h3>`;
-    const headers = Object.keys(data[0]);
-    let tbl = `<h3>${title}</h3><table class="display"><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>`;
-    data.forEach(row => { tbl += '<tr>' + headers.map(h=>`<td>${row[h]||''}</td>`).join('') + '</tr>'; });
-    tbl += '</tbody></table>';
-    return tbl;
-  }
+function buildTable(title, data) {
+  if (!data.length) return ""; // ← hide category entirely
 
-  let html = '';
+  const headers = Object.keys(data[0]);
+  let tbl = `<h3>${title}</h3>
+             <table class="display">
+               <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+               <tbody>`;
+  data.forEach(row => {
+    tbl += "<tr>" + headers.map(h => `<td>${row[h] || ''}</td>`).join('') + "</tr>";
+  });
+  tbl += "</tbody></table>";
+  return tbl;
+}
+
+
+let html = '';
+
+if (internalMatches.length)
   html += buildTable('Internally Funded', internalMatches);
+
+if (externalMatches.length)
   html += buildTable('Externally Funded', externalMatches);
+
+if (publicationMatches.length)
   html += buildTable('Publications', publicationMatches);
+
+if (conferenceMatches.length)
   html += buildTable('Conferences', conferenceMatches);
+
+if (!html.trim()) {
+  html = "<h3>No records found for this faculty.</h3>";
+}
+
 
   document.getElementById('facultyName').textContent = name;
   document.getElementById('facultyTables').innerHTML = html;
