@@ -54,6 +54,7 @@
 
 <script src="js/libs.js"></script>
 <script src="js/sources.js"></script>
+
 <script>
 window.addEventListener('load', () => {
   Papa.parse(CSV_SOURCES.publications, {
@@ -65,18 +66,28 @@ window.addEventListener('load', () => {
       const rawData = results.data.filter(r => Object.values(r).some(v => v));
       if (!rawData.length) return;
 
-      // Columns to show in table
-      const visibleCols = ["Year", "Publication Title", "Source / Publisher"];
-      const yearCol = "Year";
+      const allHeaders = Object.keys(rawData[0]);
+      const titleCol = "Publication Title";
+      const linkCol = "Link to Publication";
+      const yearCol = allHeaders[0];
+      const visibleCols = allHeaders.filter(h => h !== linkCol);
+
       let dataTable = null;
       let currentData = [...rawData];
 
-      function isLink(value) {
-        return /^https?:\/\/\S+$/i.test(value);
-      }
+      // Safe link generator
+      const safeLink = (url, displayText) => {
+        if (!url || typeof url !== 'string') return displayText || '';
+        let linkUrl = url.trim();
+        if (!linkUrl.match(/^https?:\/\//i)) return displayText;
+        return `<a href="${linkUrl}" target="_blank" rel="noopener noreferrer">${displayText} 🔗</a>`;
+      };
 
       const buildTable = (data) => {
         currentData = data;
+        if (dataTable) {
+          dataTable.clear().destroy();
+        }
 
         const $table = $("#publicationsTable");
         $table.find("thead").html("<tr>" + visibleCols.map(h => `<th>${h}</th>`).join("") + "</tr>");
@@ -85,20 +96,27 @@ window.addEventListener('load', () => {
         data.forEach((row, idx) => {
           tbody += `<tr class="clickable-row" data-index="${idx}">` +
             visibleCols.map(h => {
-              const val = row[h] || '';
-              return `<td>${isLink(val) ? `<a href="${val}" target="_blank">${val} 🔗</a>` : val}</td>`;
+              if(h === titleCol){
+                // FIXED: Title shows title text, links to publication URL
+                const link = row[linkCol];
+                const title = row[h] || '';
+                return `<td>${safeLink(link, title)}</td>`;
+              } else if(h === linkCol) {
+                // Link column shows full URL
+                return `<td>${safeLink(row[h], row[h])}</td>`;
+              }
+              return `<td>${row[h] || ""}</td>`;
             }).join("") +
           `</tr>`;
         });
         $table.find("tbody").html(tbody);
 
-        if(dataTable) dataTable.destroy();
         dataTable = $table.DataTable({ scrollX:true, pageLength:10 });
       };
 
       buildTable(rawData);
 
-      // Chart
+      // Chart (unchanged)
       const countPerYear = {};
       rawData.forEach(r => {
         const year = r[yearCol];
@@ -121,18 +139,18 @@ window.addEventListener('load', () => {
             if(elements.length){
               const idx = elements[0].index;
               const selectedYear = years[idx];
-              buildTable(rawData.filter(r => r[yearCol] === selectedYear));
+              const filteredData = rawData.filter(r => r[yearCol] === selectedYear);
+              buildTable(filteredData);
             }
           }
         }
       });
 
-      // Show All button
       $('#showAllBtn').on('click', () => buildTable(rawData));
 
-      // Row click → Details
+      // Details panel
       $(document).off('click', '.clickable-row');
-      $(document).on('click', '.clickable-row', function(){
+      $(document).on('click', '.clickable-row', function () {
         const idx = $(this).data('index');
         const record = currentData[idx];
 
@@ -140,9 +158,16 @@ window.addEventListener('load', () => {
         $(this).addClass('highlighted');
 
         let contentHtml = "<ul>";
-        visibleCols.forEach(h => {
-          const val = record[h] || '';
-          contentHtml += `<li><strong>${h}:</strong> ${isLink(val) ? `<a href="${val}" target="_blank">${val} 🔗</a>` : val}</li>`;
+        allHeaders.forEach(h => {
+          if(h === titleCol){
+            // Title clickable in details too
+            const link = record[linkCol];
+            contentHtml += `<li><strong>${h}:</strong> ${safeLink(link, record[h])}</li>`;
+          } else if(h === linkCol) {
+            contentHtml += `<li><strong>${h}:</strong> ${safeLink(record[h], record[h])}</li>`;
+          } else {
+            contentHtml += `<li><strong>${h}:</strong> ${record[h] || ''}</li>`;
+          }
         });
         contentHtml += "</ul>";
 
@@ -151,10 +176,11 @@ window.addEventListener('load', () => {
         $('html, body').animate({ scrollTop: $('#chartContainer').offset().top }, 500);
       });
 
-      $('#homeBtn').on('click',()=>{ window.location.href='index.html'; });
+      $('#homeBtn').on('click', () => { window.location.href = 'index.html'; });
     }
   });
 });
 </script>
+
 </body>
 </html>
